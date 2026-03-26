@@ -1,4 +1,4 @@
 git add OK
-[main 063656b] Loop menu after script; revert ServiceNow to purple theme
- 5 files changed, 44 insertions(+), 49 deletions(-)
+[main dd61e08] Remove quick trigger; add rich Azure Monitor audit log from ticket data
+ 5 files changed, 131 insertions(+), 88 deletions(-)
 \n

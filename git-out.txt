@@ -1,9 +1,6 @@
 git add OK
-[main 1222a4b] Fix empty employee dropdown: correct API response parsing and field names
- 7 files changed, 65 insertions(+), 15 deletions(-)
- create mode 100644 api-test.txt
- create mode 100644 git-out.txt
- create mode 100644 remote-check.txt
- create mode 100644 tools/check-remote.cjs
+[main c609467] Rebuild dist: include POST snow ticket routes (was stale)
+ 4 files changed, 34 insertions(+), 14 deletions(-)
+ create mode 100644 post-test.txt
 
 

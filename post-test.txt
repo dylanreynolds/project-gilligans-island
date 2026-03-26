@@ -1,10 +1,2 @@
-STATUS:404 BODY:<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Error</title>
-</head>
-<body>
-<pre>Cannot POST /api/snow/tickets</pre>
-</body>
-</html>
+STATUS:200
+BODY:{"success":true,"ticket":{"number":"RITM0001000","sysId":"rrdf5b3k90jhx80d","state":"New","priority":"2 - High","category":"HR","subcategory":"Employee Offboarding","shortDescription":"Offboarding Request — Adele Vance (Resignation)","description":"Employee offboarding has been initiated for Adele V

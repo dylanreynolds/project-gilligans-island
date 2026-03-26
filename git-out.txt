@@ -1,6 +1,5 @@
 git add OK
-[main af59327] Fix: toggle one-click, modal close button; add Azure Runbooks quick trigger
- 8 files changed, 93 insertions(+), 16 deletions(-)
- create mode 100644 health.txt
+[main ff5f4c9] Add ASCII banner; scenario-based menu; PS5.1 compat fixes throughout demo script
+ 4 files changed, 168 insertions(+), 106 deletions(-)
 
 

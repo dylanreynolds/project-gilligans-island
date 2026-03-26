@@ -49,12 +49,11 @@ function Invoke-MockApi {
 Write-Host ''
 Write-Host '  OffboardIQ | DEMO' -ForegroundColor White
 Write-Host ''
-Write-Host ' ___    __   __  _                             _  ___  ___    _   ____   _____  __  __   ___  ' -ForegroundColor Cyan
-Write-Host ' / _ \  / _| / _|| |__    ___    __ _  _ __  __| ||_ _|/ _ \  | | |  _ \ | ____||  \/  | / _ \ ' -ForegroundColor Cyan
-Write-Host '| | | || |_ | |_ | ''_ \  / _ \  / _` || ''__|/ _` | | || | | | | | | | | ||  _|  | |\/| || | | |' -ForegroundColor Cyan
-Write-Host '| |_| ||  _||  _|| |_) || (_) || (_| || |  | (_| | | || |_| | | | | |_| || |___ | |  | || |_| |' -ForegroundColor Cyan
-Write-Host ' \___/ |_|  |_|  |_.__/  \___/  \__,_||_|   \__,_||___|\__\_\ | | |____/ |_____||_|  |_| \___/ ' -ForegroundColor Cyan
-Write-Host '                                                              |_|' -ForegroundColor Cyan
+Write-Host ' ___   __  __ _                         _ ___ ___  ' -ForegroundColor Cyan
+Write-Host ' / _ \ / _|/ _| |__   ___   __ _ _ __ __| |_ _/ _ \ ' -ForegroundColor Cyan
+Write-Host '| | | | |_| |_| ''_ \ / _ \ / _` | ''__/ _` || | | | |' -ForegroundColor Cyan
+Write-Host '| |_| |  _|  _| |_) | (_) | (_| | | | (_| || | |_| |' -ForegroundColor Cyan
+Write-Host ' \___/|_| |_| |_.__/ \___/ \__,_|_|  \__,_|___\__\_\' -ForegroundColor Cyan
 Write-Host ''
 Write-Host '  Enterprise Offboarding  //  Azure Logic App + ServiceNow Simulation' -ForegroundColor DarkCyan
 Write-Host ''

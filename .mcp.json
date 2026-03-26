@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "enterprise-offboarding-mock": {
+      "command": "node",
+      "args": ["C:\\hackathon-offboarding-mcp\\dist\\server.js"],
+      "env": {
+        "PORT": "3000"
+      }
+    }
+  }
+}

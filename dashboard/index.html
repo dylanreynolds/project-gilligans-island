@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enterprise Offboarding Automation — Hackathon Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ── Sidebar ──────────────────────────────────── -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">⚡</span>
+          <div>
+            <div class="logo-title">OffboardIQ</div>
+            <div class="logo-sub">MCP Mock Server</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-cards">
+        <div class="summary-card" id="card-active">
+          <div class="card-value" id="stat-active">—</div>
+          <div class="card-label">Active</div>
+        </div>
+        <div class="summary-card warning" id="card-offboarding">
+          <div class="card-value" id="stat-offboarding">—</div>
+          <div class="card-label">Processing</div>
+        </div>
+        <div class="summary-card success" id="card-offboarded">
+          <div class="card-value" id="stat-offboarded">—</div>
+          <div class="card-label">Offboarded</div>
+        </div>
+      </div>
+
+      <div class="sidebar-search">
+        <input id="search" type="text" placeholder="🔍 Search users…" />
+      </div>
+
+      <div class="sidebar-filter">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="offboarding">Processing</button>
+        <button class="filter-btn" data-filter="offboarded">Done</button>
+      </div>
+
+      <div class="user-list" id="user-list">
+        <div class="loading">Loading users…</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="btn-reset" id="btn-reset" onclick="resetDemo()">🔄 Reset Demo</button>
+        <div class="connection-status" id="connection-status">
+          <span class="dot green"></span> Live
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Main Panel ───────────────────────────────── -->
+    <main class="main">
+      <!-- Header bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 id="page-title">Enterprise Offboarding Automation</h1>
+          <span class="topbar-sub">M365 + Azure Mock Environment · Hackathon Demo</span>
+        </div>
+        <div class="topbar-right">
+          <div class="badge-mcp">MCP Server</div>
+          <div class="badge-azure">Azure Logic App Simulation</div>
+        </div>
+      </header>
+
+      <!-- Welcome / no selection state -->
+      <div id="welcome-panel" class="welcome-panel">
+        <div class="welcome-icon">🏢</div>
+        <h2>Select a user to view their offboarding status</h2>
+        <p>This dashboard shows the real-time state of the mock M365 tenant as the AI-driven MCP server processes offboarding requests.</p>
+        <div class="welcome-tools">
+          <div class="tool-pill">🔐 Identity & Access</div>
+          <div class="tool-pill">📞 Teams Calling</div>
+          <div class="tool-pill">🎫 Licensing</div>
+          <div class="tool-pill">📧 Mailbox</div>
+          <div class="tool-pill">🖥️ Azure Virtual Desktop</div>
+          <div class="tool-pill">💻 Hardware Discovery</div>
+          <div class="tool-pill">🖨️ Printer Access</div>
+        </div>
+        <p class="welcome-hint">💡 Ask your AI: <em>"Offboard Adele Vance"</em> — then watch this dashboard update in real time.</p>
+      </div>
+
+      <!-- User detail panel -->
+      <div id="user-panel" class="user-panel hidden">
+        <!-- User hero -->
+        <div class="user-hero">
+          <div class="user-avatar" id="detail-avatar"></div>
+          <div class="user-hero-info">
+            <h2 id="detail-name"></h2>
+            <div id="detail-title-dept"></div>
+            <div id="detail-contact"></div>
+          </div>
+          <div class="user-hero-status">
+            <div class="status-badge" id="detail-status-badge"></div>
+            <div id="detail-account-state"></div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab active" data-tab="checklist">📋 Checklist</button>
+          <button class="tab" data-tab="identity">🔐 Identity</button>
+          <button class="tab" data-tab="teams">📞 Teams</button>
+          <button class="tab" data-tab="hardware">💻 Hardware</button>
+          <button class="tab" data-tab="avd">🖥️ AVD</button>
+          <button class="tab" data-tab="audit">📜 Audit Log</button>
+        </div>
+
+        <!-- Checklist Tab -->
+        <div id="tab-checklist" class="tab-content active">
+          <div class="checklist-grid" id="checklist-grid"></div>
+        </div>
+
+        <!-- Identity Tab -->
+        <div id="tab-identity" class="tab-content hidden">
+          <div class="info-grid" id="identity-grid"></div>
+        </div>
+
+        <!-- Teams Tab -->
+        <div id="tab-teams" class="tab-content hidden">
+          <div class="info-grid" id="teams-grid"></div>
+        </div>
+
+        <!-- Hardware Tab -->
+        <div id="tab-hardware" class="tab-content hidden">
+          <div id="hardware-table"></div>
+        </div>
+
+        <!-- AVD Tab -->
+        <div id="tab-avd" class="tab-content hidden">
+          <div id="avd-table"></div>
+        </div>
+
+        <!-- Audit Log Tab -->
+        <div id="tab-audit" class="tab-content hidden">
+          <div id="audit-table"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ── Audit Feed (bottom strip) ────────────────── -->
+    <div class="audit-strip" id="audit-strip">
+      <div class="audit-strip-header">⚡ Live Action Log</div>
+      <div class="audit-strip-entries" id="audit-feed"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -49,7 +49,7 @@ echo  Invalid choice.
 goto menu
 
 :open_browser
-start http://localhost:3000/dashboard
+start http://localhost:3000
 goto menu_end
 
 :demo_e2e

@@ -1,5 +1,5 @@
 git add OK
-[main ff5f4c9] Add ASCII banner; scenario-based menu; PS5.1 compat fixes throughout demo script
- 4 files changed, 168 insertions(+), 106 deletions(-)
+[main b7527cf] Fix ASCII banner to shorter variant with correct PS5.1 and batch escaping
+ 4 files changed, 13 insertions(+), 16 deletions(-)
 
 

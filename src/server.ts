@@ -18,7 +18,7 @@ import { registerAvdTools } from "./tools/avd.js";
 import { registerHardwareTools } from "./tools/hardware.js";
 import { registerPrinterTools } from "./tools/printer.js";
 import { registerOrchestrationTools } from "./tools/orchestration.js";
-import { registerServiceNowTools, getAllSnowTickets, getSnowTicket, resetSnowTickets, createSnowTicket, approveTicket } from "./tools/servicenow.js";
+import { registerServiceNowTools, getAllSnowTickets, getSnowTicket, resetSnowTickets, createSnowTicket, approveTicket, resolveSnowTicket, addWorkNote } from "./tools/servicenow.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -134,6 +134,22 @@ app.post("/api/snow/tickets/:number/approve", (req, res) => {
   const firstApproval = ticket.approvals.find(a => a.state === "requested");
   const approver = firstApproval?.approver ?? ((req.body as { approver?: string })?.approver ?? "IT Admin");
   approveTicket(req.params.number, approver);
+  res.json({ success: true, ticket: normalizeTicket(getSnowTicket(req.params.number)) });
+});
+
+app.post("/api/snow/tickets/:number/work-note", (req, res) => {
+  const ticket = getSnowTicket(req.params.number);
+  if (!ticket) { res.status(404).json({ error: "Not Found" }); return; }
+  const { author, note, type } = req.body as { author?: string; note?: string; type?: "work_note" | "activity" | "system" };
+  addWorkNote(req.params.number, author ?? "System", note ?? "", type ?? "work_note");
+  res.json({ success: true, ticket: normalizeTicket(getSnowTicket(req.params.number)) });
+});
+
+app.post("/api/snow/tickets/:number/resolve", (req, res) => {
+  const ticket = getSnowTicket(req.params.number);
+  if (!ticket) { res.status(404).json({ error: "Not Found" }); return; }
+  const { completedBy, resolution, jobId } = req.body as { completedBy?: string; resolution?: string; jobId?: string };
+  resolveSnowTicket(req.params.number, completedBy ?? "Azure Automation", resolution ?? "Offboarding completed.", jobId ?? "");
   res.json({ success: true, ticket: normalizeTicket(getSnowTicket(req.params.number)) });
 });
 

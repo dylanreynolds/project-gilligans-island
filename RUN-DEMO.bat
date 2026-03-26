@@ -42,10 +42,10 @@ echo   [4]  Resignation + Teams error   (Teams API throttle simulation)
 echo   [5]  Enter user manually         (type full name + reason)
 echo   [6]  Open dashboard in browser
 echo   [7]  Reset all users to Active state
+echo   [8]  Full E2E automated flow   (ServiceNow -^> Logic App -^> Azure -^> Closure)
 echo   [0]  Exit
 echo.
-set /p CHOICE="  Enter choice [0-7]: "
-
+set /p CHOICE="  Enter choice [0-8]: "
 if "%CHOICE%"=="1" goto demo_resignation
 if "%CHOICE%"=="2" goto demo_admin
 if "%CHOICE%"=="3" goto demo_contractor
@@ -53,6 +53,7 @@ if "%CHOICE%"=="4" goto demo_error
 if "%CHOICE%"=="5" goto demo_custom
 if "%CHOICE%"=="6" goto open_browser
 if "%CHOICE%"=="7" goto reset
+if "%CHOICE%"=="8" goto demo_e2e
 if "%CHOICE%"=="0" exit /b 0
 echo  Invalid choice.
 goto menu
@@ -81,6 +82,10 @@ goto menu_end
 
 :open_browser
 start http://localhost:3000/dashboard
+goto menu_end
+
+:demo_e2e
+PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\full-offboard-flow.ps1"
 goto menu_end
 
 :reset

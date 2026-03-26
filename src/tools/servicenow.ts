@@ -170,12 +170,40 @@ export function approveTicket(number: string, approverId: string): void {
   }
   addWorkNote(number, approval?.approver ?? "Manager", "Offboarding request approved. Azure automation triggered.", "activity");
   ticket.state = "In Progress";
+
+  // Generate simulated Azure integration IDs (mirrors what Logic App outbound REST would return)
+  const runId = `08585${Math.random().toString(36).slice(2, 8).toUpperCase()}${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const jobId = `job-${nextSysId()}`;
+  ticket.azureLogicAppRunId  = runId;
+  ticket.azureRunbookJobId   = jobId;
+  ticket.outboundRestTriggered = true;
+  ticket.outboundRestPayload = {
+    ticketNumber: ticket.number,
+    employeeId:   ticket.affectedUserId,
+    employeeName: ticket.affectedUser,
+    reason:       ticket.reason,
+    triggeredAt:  new Date().toISOString(),
+  };
+  ticket.outboundRestResponse = { status: 202, runId, message: "Logic App run started" };
+  addWorkNote(number, "Azure", `Logic App triggered. RunId: ${runId}. Runbook Job: ${jobId}.`, "system");
+
   ticket.updatedAt = new Date().toISOString();
 }
 
 export function resetSnowTickets(): void {
   ticketStore.clear();
   ticketCounter = 1000;
+}
+
+export function resolveSnowTicket(number: string, completedBy: string, resolution: string, jobId: string): void {
+  const ticket = ticketStore.get(number);
+  if (!ticket) return;
+  const now = new Date().toISOString();
+  ticket.state      = "Resolved";
+  ticket.resolvedAt = now;
+  ticket.updatedAt  = now;
+  addWorkNote(number, completedBy, resolution, "system");
+  addWorkNote(number, "ServiceNow", `Ticket automatically resolved. Azure Automation job ${jobId} completed. All offboarding tasks verified. Ticket closed.`, "activity");
 }
 
 // ─── Register MCP Tools ───────────────────────────────────────────────────────

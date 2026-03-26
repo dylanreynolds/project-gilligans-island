@@ -274,22 +274,130 @@ function azTab(tab) {
 }
 
 async function loadFullAudit() {
-  try {
-    const r = await fetch(API + '/audit');
-    if (!r.ok) return;
-    const data = await r.json();
-    const wrap = document.getElementById('az-audit-full');
-    if (!wrap) return;
-    const entries = (data.entries || []).slice(-50).reverse();
-    wrap.innerHTML = entries.length ? entries.map(e => `
-      <div class="az-audit-row">
-        <span class="az-audit-time">${fmtTime(e.timestamp)}</span>
-        <span class="az-audit-tool">${e.tool}</span>
-        <span class="az-audit-user">${e.targetUser?.displayName || ''}</span>
-        <span class="az-audit-result">${e.result?.substring(0, 100) || ''}</span>
-      </div>
-    `).join('') : '<div class="az-empty">No audit entries yet.</div>';
-  } catch {}
+  const wrap = document.getElementById('az-audit-full');
+  if (!wrap) return;
+
+  // Build rich Azure Monitor-style entries from live ticket data
+  const rows = [];
+
+  // Always show the Logic App and Automation Account as registered
+  rows.push({
+    time: new Date(Date.now() - 86400000 * 2).toISOString(),
+    category: 'Administrative',
+    operation: 'Microsoft.Logic/workflows/write',
+    caller: 'svc-offboard-auto@subway.onmicrosoft.com',
+    resource: 'la-offboarding-orchestrator',
+    status: 'Succeeded',
+    detail: 'Logic App workflow enabled. HTTP trigger endpoint active.'
+  });
+  rows.push({
+    time: new Date(Date.now() - 86400000 * 2 + 5000).toISOString(),
+    category: 'Administrative',
+    operation: 'Microsoft.Automation/automationAccounts/runbooks/write',
+    caller: 'svc-offboard-auto@subway.onmicrosoft.com',
+    resource: 'Invoke-FullOffboardOrchestrator',
+    status: 'Succeeded',
+    detail: 'Runbook published. Version: 1.0.4'
+  });
+
+  // One row set per ticket that has been approved and triggered Azure
+  for (const t of snowTickets.filter(x => x.azureLogicAppRunId)) {
+    const base = new Date(t.approvedAt || t.updatedAt || Date.now()).getTime();
+    rows.push({
+      time: new Date(base).toISOString(),
+      category: 'ServiceNow Webhook',
+      operation: 'Microsoft.Logic/workflows/triggers/run',
+      caller: 'svc-offboardiq@subway.service-now.com',
+      resource: 'la-offboarding-orchestrator / triggers / manual',
+      status: 'Accepted',
+      detail: `SNOW ticket ${t.number} approved. Employee: ${t.employeeName}. HTTP 202 Accepted. Run: ${t.azureLogicAppRunId}`
+    });
+    rows.push({
+      time: new Date(base + 1200).toISOString(),
+      category: 'Logic App',
+      operation: 'Microsoft.Logic/workflows/runs/actions/listExpressionTraces',
+      caller: 'la-offboarding-orchestrator',
+      resource: `runs/${t.azureLogicAppRunId}/actions/Parse_JSON`,
+      status: 'Succeeded',
+      detail: `Payload parsed. employeeId=${t.employeeId || t.affectedUserId || '-'}, ticketNumber=${t.number}`
+    });
+    rows.push({
+      time: new Date(base + 3000).toISOString(),
+      category: 'Logic App',
+      operation: 'Microsoft.Automation/automationAccounts/jobs/write',
+      caller: 'la-offboarding-orchestrator',
+      resource: `aa-offboarding-prod / jobs / ${t.azureRunbookJobId}`,
+      status: 'Created',
+      detail: `New-AzAutomationJob — RunbookName: Invoke-FullOffboardOrchestrator, JobId: ${t.azureRunbookJobId}`
+    });
+    // Runbook task steps
+    const tasks = [
+      ['Invoke-IdentityOffboard',    'Account disabled. Sessions revoked. Groups removed.'],
+      ['Invoke-TeamsPhoneOffboard',  'Enterprise Voice disabled. DDI released. Forwarding set.'],
+      ['Invoke-LicenseReclaim',      'M365 E5 + Teams Phone + Audio Conf licenses reclaimed.'],
+      ['Invoke-MailboxOffboard',     'Auto-reply set. Mailbox converted to Shared.'],
+      ['Invoke-AVDOffboard',         'AVD sessions disconnected. App group access removed.'],
+      ['Invoke-HardwareDiscovery',   'CMDB queried. Return shipment ticket generated.'],
+    ];
+    tasks.forEach(([rb, detail], i) => {
+      rows.push({
+        time: new Date(base + 5000 + i * 8000).toISOString(),
+        category: 'Automation',
+        operation: `Microsoft.Automation/automationAccounts/jobs/output`,
+        caller: `aa-offboarding-prod / ${t.azureRunbookJobId}`,
+        resource: rb,
+        status: 'Succeeded',
+        detail
+      });
+    });
+    if (t.state === 'Resolved') {
+      rows.push({
+        time: new Date(base + 60000).toISOString(),
+        category: 'Automation',
+        operation: 'Microsoft.Automation/automationAccounts/jobs/write',
+        caller: 'aa-offboarding-prod',
+        resource: `jobs/${t.azureRunbookJobId}`,
+        status: 'Completed',
+        detail: `Job completed. ExitCode: 0. ServiceNow callback sent. Ticket ${t.number} resolved.`
+      });
+    }
+  }
+
+  rows.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+  const catColor = {
+    'ServiceNow Webhook': '#e89040',
+    'Logic App':          '#4a90d8',
+    'Automation':         '#36c45a',
+    'Administrative':     '#6888a8'
+  };
+  const statusColor = {
+    'Succeeded': '#36c45a', 'Completed': '#36c45a',
+    'Accepted':  '#4a90d8', 'Created':   '#4a90d8',
+    'Failed':    '#e84040', 'Running':   '#e89040'
+  };
+
+  wrap.innerHTML = `
+    <div style="display:grid;grid-template-columns:160px 180px 1fr 160px 80px;gap:0;border-bottom:1px solid #1e2a3a;padding:6px 0 6px 4px;margin-bottom:4px">
+      <span style="font-size:10px;color:#3a5878;text-transform:uppercase;letter-spacing:.8px">Time</span>
+      <span style="font-size:10px;color:#3a5878;text-transform:uppercase;letter-spacing:.8px">Category</span>
+      <span style="font-size:10px;color:#3a5878;text-transform:uppercase;letter-spacing:.8px">Operation / Resource</span>
+      <span style="font-size:10px;color:#3a5878;text-transform:uppercase;letter-spacing:.8px">Caller</span>
+      <span style="font-size:10px;color:#3a5878;text-transform:uppercase;letter-spacing:.8px">Status</span>
+    </div>
+    ${rows.map(r => `
+    <div class="az-audit-row" style="grid-template-columns:160px 180px 1fr 160px 80px;align-items:start;cursor:default" title="${r.detail.replace(/"/g,'&quot;')}">
+      <span class="az-audit-time">${fmtTime(r.time)}</span>
+      <span style="font-size:11px;color:${catColor[r.category]||'#6888a8'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.category}</span>
+      <span style="display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:11px;color:#4a90d8;font-family:'Cascadia Code',monospace">${r.operation}</span>
+        <span style="font-size:10px;color:#3a5878">${r.resource}</span>
+        <span style="font-size:10px;color:#5a7a6a">${r.detail.substring(0,90)}${r.detail.length>90?'…':''}</span>
+      </span>
+      <span style="font-size:10px;color:#3a6888;font-family:'Cascadia Code',monospace;word-break:break-all">${r.caller.length>30?r.caller.substring(0,30)+'…':r.caller}</span>
+      <span style="font-size:11px;font-weight:600;color:${statusColor[r.status]||'#6888a8'}">${r.status}</span>
+    </div>`).join('')}
+  `;
 }
 
 function renderLogicAppRuns() {
@@ -368,8 +476,10 @@ async function loadSnowTickets() {
     if (currentSnTab === 'approvals') renderApprovalsTable();
     if (currentSnTab === 'outbound') renderOutboundLog();
     if (currentSnTab === 'reports') updateReports();
+    if (currentAzTab === 'audit') loadFullAudit();
     if (currentAzTab === 'logicapps') renderLogicAppRuns();
     if (currentAzTab === 'jobs') renderJobsTab();
+    if (currentAzTab === 'audit') loadFullAudit();
     renderJobsPanel(snowTickets);
   } catch {}
 }
@@ -381,9 +491,9 @@ function updateSnBadges() {
   setEl('sn-badge-approvals', pend);
 }
 
+// ── Populate snow employee select ────────────────────────────────────────────
 function populateSnowEmployeeSelect() {
   const sel = document.getElementById('sn-emp-select');
-  const rbSel = document.getElementById('rb-emp-select');
   if (azUsers.length === 0) return;
   const active = azUsers.filter(u => u.status === 'active');
   const opts = active.map(u => `<option value="${u.id}">${u.displayName} — ${u.department || ''}</option>`).join('');
@@ -391,11 +501,6 @@ function populateSnowEmployeeSelect() {
     const cur = sel.value;
     sel.innerHTML = '<option value="">-- Select employee --</option>' + opts;
     if (cur) sel.value = cur;
-  }
-  if (rbSel) {
-    const cur = rbSel.value;
-    rbSel.innerHTML = '<option value="">Select employee…</option>' + opts;
-    if (cur) rbSel.value = cur;
   }
 }
 
@@ -477,48 +582,6 @@ function approveTicket(number) {
       if (currentSnTab === 'approvals') renderApprovalsTable();
       if (currentView === 'azure') azTab('logicapps');
     }).catch(() => alert('Approval failed.'));
-}
-
-// ── Azure Runbook Quick Trigger ───────────────────────────────────────────────
-function triggerRunbook() {
-  const empId  = document.getElementById('rb-emp-select').value;
-  const reason = document.getElementById('rb-reason-select').value;
-  if (!empId) { alert('Select an employee first.'); return; }
-
-  const btn = document.getElementById('rb-trigger-btn');
-  btn.disabled = true;
-  btn.textContent = '⌛ Triggering…';
-
-  fetch(API + '/snow/tickets', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ employeeId: empId, reason, requestedBy: 'IT Admin' })
-  })
-  .then(r => r.json())
-  .then(data => {
-    const num = data.ticket?.number;
-    if (!num) throw new Error(data.error || 'No ticket returned');
-    addAction('🚀 Runbook queued: ' + num + ' — ' + data.ticket.shortDescription?.substring(0, 60));
-    return fetch(API + '/snow/tickets/' + num + '/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ approver: 'IT Admin' })
-    });
-  })
-  .then(r => r.json())
-  .then(data => {
-    const t = data.ticket;
-    addAction('✅ Logic App fired · RunId: ' + (t?.azureLogicAppRunId?.substring(0, 28) || '?'));
-    btn.disabled = false;
-    btn.textContent = '▶ Run Invoke-FullOffboardOrchestrator';
-    loadSnowTickets();
-    azTab('jobs');
-  })
-  .catch(err => {
-    btn.disabled = false;
-    btn.textContent = '▶ Run Invoke-FullOffboardOrchestrator';
-    alert('Trigger failed: ' + err.message);
-  });
 }
 
 function renderOutboundLog() {

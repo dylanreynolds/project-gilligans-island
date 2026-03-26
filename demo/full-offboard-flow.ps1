@@ -21,7 +21,7 @@ param(
     [string]$UserName     = "",
     [string]$Reason       = "Resignation",
     [string]$BaseUrl      = "http://localhost:3000",
-    [string]$SnowInstance = "contoso",
+    [string]$SnowInstance = "subway",
     [string]$AzSubId      = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     [string]$AzRg         = "rg-automation-australiasoutheast",
     [string]$AzAaName     = "aa-offboarding-prod",
@@ -146,7 +146,7 @@ Write-Cmd "Invoke-RestMethod -Method POST -Uri '$SnowBase/api/now/table/sc_req_i
 $ticketResp = Invoke-MockApi "/api/snow/tickets" -Method POST -Body @{
     employeeId  = $user.id
     reason      = $Reason
-    requestedBy = "Patti Fernandez"
+    requestedBy = "Jonas Grumby"
 }
 
 if (-not $ticketResp -or -not $ticketResp.ticket) {

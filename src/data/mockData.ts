@@ -165,7 +165,7 @@ function makeUser(
   extraGroups: string[],
   roles: { displayName: string; scope: string }[]
 ): MockUser {
-  const upn = `${firstName}${lastName[0]}@M365x12345.onmicrosoft.com`;
+  const upn = `${firstName}${lastName[0]}@FWH.onmicrosoft.com`;
   const areaCode = location === "Seattle" ? "425" : location === "New York" ? "212" : "312";
   const phoneNumber = `+1 ${areaCode} 555 0${ext}`;
   const hp = AVD_HOST_POOLS[hostPoolIndex];
@@ -283,31 +283,16 @@ function makeUser(
   };
 }
 
-// ---- 25 M365 Sample Users ----
+// ---- Gilligan's Island Cast — S.S. Minnow crew & castaways (Franchise World HQ tenant) ----
 export const MOCK_USERS: MockUser[] = [
-  makeUser("usr-001", "Adele",    "Vance",     "Retail Manager",           "Sales & Marketing",  "Seattle",  "101", "usr-020", "Patti Fernandez",  1, [0, 1], ["GRP-VPN-Users", "GRP-File-Share-Sales"],     []),
-  makeUser("usr-002", "Alex",     "Wilber",    "Marketing Assistant",       "Sales & Marketing",  "Seattle",  "102", "usr-001", "Adele Vance",      1, [0],    ["GRP-VPN-Users"],                              []),
-  makeUser("usr-003", "Allan",    "Deyoung",   "IT Admin",                  "IT",                 "Seattle",  "103", "usr-019", "Nestor Wilke",     2, [0, 1], ["GRP-IT-Admins", "GRP-VPN-Users"],             [{ displayName: "Teams Administrator", scope: "/subscriptions/tenant" }]),
-  makeUser("usr-004", "Bianca",   "Pisani",    "Global Retail Manager",     "Operations",         "Seattle",  "104", "usr-020", "Patti Fernandez",  0, [0],    ["GRP-VPN-Users", "GRP-Operations"],            []),
-  makeUser("usr-005", "Brian",    "Johnson",   "Auditor",                   "Finance",            "New York", "105", "usr-022", "Miriam Graham",    0, [2],    ["GRP-Finance-ReadOnly", "GRP-VPN-Users"],      []),
-  makeUser("usr-006", "Cameron",  "White",     "Business Development Mgr",  "Sales & Marketing",  "Seattle",  "106", "usr-001", "Adele Vance",      1, [0, 1], ["GRP-VPN-Users", "GRP-Sales-Leadership"],     []),
-  makeUser("usr-007", "Christie", "Cline",     "Product Catalog Manager",   "Operations",         "Seattle",  "107", "usr-020", "Patti Fernandez",  0, [1],    ["GRP-VPN-Users"],                              []),
-  makeUser("usr-008", "Debra",    "Berger",    "Support Engineer",          "IT",                 "Chicago",  "108", "usr-003", "Allan Deyoung",    2, [3],    ["GRP-IT-Support", "GRP-VPN-Users"],            []),
-  makeUser("usr-009", "Emily",    "Braun",     "Data Analytics Engineer",   "IT",                 "Seattle",  "109", "usr-003", "Allan Deyoung",    2, [0],    ["GRP-IT-Dev", "GRP-VPN-Users"],                [{ displayName: "Contributor", scope: "/subscriptions/azure-sub-prod" }]),
-  makeUser("usr-010", "Garth",    "Fort",      "Shipping Manager",          "Operations",         "Chicago",  "110", "usr-004", "Bianca Pisani",    0, [3],    ["GRP-VPN-Users", "GRP-Warehouse"],             []),
-  makeUser("usr-011", "Grady",    "Archie",    "Designer",                  "Creative",           "Seattle",  "111", "usr-006", "Cameron White",    1, [0],    ["GRP-VPN-Users", "GRP-Creative-Assets"],       []),
-  makeUser("usr-012", "Henrietta","Mueller",   "Controller",                "Finance",            "New York", "112", "usr-022", "Miriam Graham",    0, [2],    ["GRP-Finance-ReadOnly", "GRP-Finance-Write"],  []),
-  makeUser("usr-013", "Irvin",    "Sayers",    "Executive Assistant",       "Executive",          "Seattle",  "113", "usr-020", "Patti Fernandez",  1, [0, 1], ["GRP-VPN-Users", "GRP-Exec-Support"],          []),
-  makeUser("usr-014", "Isaiah",   "Langer",    "Systems Engineer",          "IT",                 "Seattle",  "114", "usr-003", "Allan Deyoung",    2, [0, 1], ["GRP-IT-Admins", "GRP-VPN-Users"],             [{ displayName: "Global Admin", scope: "/subscriptions/tenant" }, { displayName: "Exchange Admin", scope: "/subscriptions/tenant" }]),
-  makeUser("usr-015", "Johanna",  "Lorenz",    "Business Administrator",    "Operations",         "Chicago",  "115", "usr-004", "Bianca Pisani",    0, [3],    ["GRP-VPN-Users"],                              []),
-  makeUser("usr-016", "Joni",     "Sherman",   "Paralegal",                 "Legal",              "New York", "116", "usr-020", "Patti Fernandez",  0, [2],    ["GRP-Legal", "GRP-VPN-Users"],                 []),
-  makeUser("usr-017", "Lee",      "Gu",        "Staff Accountant",          "Finance",            "Seattle",  "117", "usr-022", "Miriam Graham",    0, [0],    ["GRP-Finance-ReadOnly", "GRP-VPN-Users"],      []),
-  makeUser("usr-018", "Lidia",    "Holloway",  "Project Manager",           "IT",                 "Seattle",  "118", "usr-003", "Allan Deyoung",    2, [0, 1], ["GRP-PMO", "GRP-VPN-Users"],                   []),
-  makeUser("usr-019", "Nestor",   "Wilke",     "IT Director",               "IT",                 "Seattle",  "119", "usr-020", "Patti Fernandez",  2, [0, 1], ["GRP-IT-Admins", "GRP-VPN-Users"],             [{ displayName: "Global Admin", scope: "/subscriptions/tenant" }]),
-  makeUser("usr-020", "Patti",    "Fernandez", "Chief Executive Officer",   "Executive",          "Seattle",  "120", "usr-020", "Patti Fernandez",  1, [0, 1], ["GRP-Exec", "GRP-VPN-Users"],                  [{ displayName: "Global Admin", scope: "/subscriptions/tenant" }]),
-  makeUser("usr-021", "Lynne",    "Robbins",   "HR Specialist",             "Human Resources",    "Seattle",  "121", "usr-020", "Patti Fernandez",  3, [0],    ["GRP-HR", "GRP-VPN-Users"],                    []),
-  makeUser("usr-022", "Miriam",   "Graham",    "CFO",                       "Finance",            "New York", "122", "usr-020", "Patti Fernandez",  0, [2],    ["GRP-Finance-Leadership", "GRP-VPN-Users"],    [{ displayName: "Billing Administrator", scope: "/subscriptions/tenant" }]),
-  makeUser("usr-023", "Megan",    "Bowen",     "Marketing Manager",         "Sales & Marketing",  "Seattle",  "123", "usr-001", "Adele Vance",      1, [0, 1], ["GRP-VPN-Users", "GRP-Marketing"],             []),
-  makeUser("usr-024", "Pradeep",  "Gupta",     "Accountant",                "Finance",            "Chicago",  "124", "usr-022", "Miriam Graham",    0, [3],    ["GRP-Finance-ReadOnly", "GRP-VPN-Users"],      []),
-  makeUser("usr-025", "Meredith", "Langston",  "Helpdesk Technician",       "IT",                 "Chicago",  "125", "usr-003", "Allan Deyoung",    2, [3],    ["GRP-IT-Support", "GRP-VPN-Users"],            []),
+  makeUser("usr-001", "Willy",    "Gilligan",  "IT Helpdesk Analyst",       "Information Technology", "Chicago",    "101", "usr-006", "Roy Hinkley",      2, [3],    ["GRP-IT-Support", "GRP-VPN-Users"],                    []),
+  makeUser("usr-002", "Jonas",    "Grumby",    "Fleet Operations Manager",  "Operations",             "Seattle",    "102", "usr-006", "Roy Hinkley",      0, [0, 1], ["GRP-VPN-Users", "GRP-Operations-Leadership"],         []),
+  makeUser("usr-003", "Thurston", "Howell",    "Chief Investment Officer",  "Finance",                "New York",   "103", "usr-006", "Roy Hinkley",      0, [2],    ["GRP-Finance-Leadership", "GRP-VPN-Users"],             [{ displayName: "Billing Administrator", scope: "/subscriptions/tenant" }]),
+  makeUser("usr-004", "Eunice",   "Howell",    "VP of Social Engagement",   "Executive",              "New York",   "104", "usr-003", "Thurston Howell",  1, [2],    ["GRP-VPN-Users", "GRP-Exec-Support"],                  []),
+  makeUser("usr-005", "Ginger",   "Grant",     "Head of Brand Marketing",   "Sales & Marketing",      "Seattle",    "105", "usr-006", "Roy Hinkley",      1, [0, 1], ["GRP-Marketing-Leadership", "GRP-VPN-Users"],           []),
+  makeUser("usr-006", "Roy",      "Hinkley",   "Chief Technology Officer",  "Information Technology", "Seattle",    "106", "usr-006", "Roy Hinkley",      2, [0, 1], ["GRP-IT-Admins", "GRP-VPN-Users"],                     [{ displayName: "Global Administrator", scope: "/subscriptions/tenant" }, { displayName: "Teams Administrator", scope: "/subscriptions/tenant" }]),
+  makeUser("usr-007", "MaryAnn",  "Sommers",   "Store Operations Manager",  "Operations",             "Chicago",    "107", "usr-002", "Jonas Grumby",     0, [3],    ["GRP-VPN-Users", "GRP-Operations"],                    []),
+  makeUser("usr-008", "Wrongway", "Feldman",   "Logistics Coordinator",     "Operations",             "Chicago",    "108", "usr-002", "Jonas Grumby",     0, [3],    ["GRP-VPN-Users"],                                      []),
+  makeUser("usr-009", "Erika",    "Smith",     "Business Development Mgr",  "Sales & Marketing",      "Seattle",    "109", "usr-005", "Ginger Grant",     1, [0],    ["GRP-VPN-Users", "GRP-Sales-Leadership"],              []),
+  makeUser("usr-010", "Harold",   "Hecuba",    "Creative Director",         "Creative",               "New York",   "110", "usr-005", "Ginger Grant",     1, [2],    ["GRP-Creative-Assets", "GRP-VPN-Users"],               []),
 ];

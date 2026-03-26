@@ -79,7 +79,7 @@ function renderAzUsersTable() {
   if (!wrap) return;
   const search = (document.getElementById('az-user-search')?.value || '').toLowerCase();
   const filtered = azUsers.filter(u => {
-    if (search && !u.displayName.toLowerCase().includes(search) && !u.department?.toLowerCase().includes(search)) return false;
+    if (search && !u.displayName.toLowerCase().includes(search) && !u.department?.toLowerCase().includes(search) && !u.userPrincipalName?.toLowerCase().includes(search)) return false;
     if (currentAzFilter === 'active' && u.status !== 'active') return false;
     if (currentAzFilter === 'offboarding' && u.status !== 'offboarding') return false;
     if (currentAzFilter === 'offboarded' && u.status !== 'offboarded') return false;
@@ -87,22 +87,35 @@ function renderAzUsersTable() {
   });
   if (filtered.length === 0) { wrap.innerHTML = '<div class="az-empty">No users match the filter.</div>'; return; }
   wrap.innerHTML = `
+    <div class="az-found-count">${azUsers.length.toLocaleString()} users found</div>
     <div class="az-user-table-wrap">
       <table class="az-table">
         <thead><tr>
-          <th>Display Name</th><th>UPN</th><th>Department</th><th>Title</th><th>Status</th><th>Account</th>
+          <th class="az-th-chk"><input type="checkbox" /></th>
+          <th>Display name &#8593;</th>
+          <th>User principal name &#8593;&#8595;</th>
+          <th>User type</th>
+          <th>Is Agent</th>
+          <th>On-premises sync</th>
+          <th>Identities</th>
+          <th>Company name</th>
         </tr></thead>
         <tbody>
-          ${filtered.map(u => `
-            <tr onclick="selectUser('${u.id}')">
-              <td>${u.displayName}</td>
-              <td style="font-size:11px;color:#3a6888">${u.userPrincipalName}</td>
-              <td>${u.department || '-'}</td>
-              <td style="font-size:12px">${u.jobTitle || '-'}</td>
-              <td><span class="az-status-badge ${statusBadgeClass(u.status)}">${u.status}</span></td>
-              <td style="font-size:11px">${u.accountEnabled ? '<span style="color:#36c45a">Enabled</span>' : '<span style="color:#e84040">Disabled</span>'}</td>
-            </tr>
-          `).join('')}
+          ${filtered.map(u => {
+            const initials = u.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            const upnShort = u.userPrincipalName.length > 28 ? u.userPrincipalName.substring(0, 28) + '\u2026' : u.userPrincipalName;
+            const onPrem = u.status !== 'offboarded' ? 'Yes' : 'No';
+            return `<tr onclick="selectUser('${u.id}')">
+              <td class="az-td-chk" onclick="event.stopPropagation()"><input type="checkbox" /></td>
+              <td><div class="az-user-cell"><div class="az-ucell-init">${initials}</div><span class="az-ucell-name">${u.displayName}</span></div></td>
+              <td class="az-td-upn">${upnShort} <button class="az-copy-btn" title="Copy UPN" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${u.userPrincipalName}')">&#128203;</button></td>
+              <td><span class="az-type-badge">Member</span></td>
+              <td class="az-td-meta">No</td>
+              <td class="az-td-meta">${onPrem}</td>
+              <td><span class="az-identity-badge">FWH.onmicrosoft.com</span></td>
+              <td class="az-td-meta">Franchise World HQ</td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>

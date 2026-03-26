@@ -1,3 +1,2 @@
-Killed PID 36504
-Killed PID 27440
+Killed PID 27580
 New server started (PID will be shown in restart-out.txt)

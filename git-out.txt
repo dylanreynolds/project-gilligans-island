@@ -1,6 +1,5 @@
 git add OK
-[main 7a73739] Add full E2E flow: ServiceNow RITM -> Logic App -> Azure Automation -> SNOW closure
- 7 files changed, 474 insertions(+), 8 deletions(-)
- create mode 100644 demo/full-offboard-flow.ps1
+[main 1f640ae] Simplify menu: keep only options 6, 7, 8
+ 3 files changed, 5 insertions(+), 36 deletions(-)
 
 

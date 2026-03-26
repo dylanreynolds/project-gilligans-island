@@ -35,15 +35,15 @@ echo  =============================================================
 echo.
 echo   Pick a demo scenario:
 echo.
-echo   [6]  Open dashboard in browser
-echo   [7]  Reset all users to Active state
-echo   [8]  Full E2E automated flow   (ServiceNow -^> Logic App -^> Azure -^> Closure)
+echo   [1]  Open dashboard in browser
+echo   [2]  Reset all users to Active state
+echo   [3]  Full E2E automated flow   (ServiceNow -^> Logic App -^> Azure -^> Closure)
 echo   [0]  Exit
 echo.
 set /p CHOICE="  Enter choice: "
-if "%CHOICE%"=="6" goto open_browser
-if "%CHOICE%"=="7" goto reset
-if "%CHOICE%"=="8" goto demo_e2e
+if "%CHOICE%"=="1" goto open_browser
+if "%CHOICE%"=="2" goto reset
+if "%CHOICE%"=="3" goto demo_e2e
 if "%CHOICE%"=="0" exit /b 0
 echo  Invalid choice.
 goto menu

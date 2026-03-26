@@ -98,6 +98,14 @@ a { text-decoration: none; }
 .az-rb-name { font-size: 13px; font-weight: 600; color: #5898d8; margin-bottom: 6px; font-family: 'Cascadia Code', 'Consolas', monospace; }
 .az-rb-desc { font-size: 12px; color: #6888a8; line-height: 1.5; margin-bottom: 10px; }
 .az-rb-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Quick Trigger Bar */
+.az-trigger-bar { display: flex; align-items: center; gap: 10px; background: #0c1828; border: 1px solid #0050a0; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.az-trigger-title { font-size: 13px; font-weight: 700; color: #5898d8; white-space: nowrap; min-width: 110px; }
+.az-trigger-bar select { background: #1b1f2a; border: 1px solid #2a3a4a; border-radius: 4px; color: #c8d8e8; padding: 6px 10px; font-size: 12px; min-width: 190px; }
+.az-trigger-btn { background: #0078d4; border: none; border-radius: 4px; color: #fff; padding: 7px 16px; font-size: 12px; cursor: pointer; white-space: nowrap; font-weight: 600; letter-spacing: .3px; }
+.az-trigger-btn:hover:not(:disabled) { background: #106ebe; }
+.az-trigger-btn:disabled { background: #3a5570; cursor: not-allowed; }
+.az-trigger-hint { font-size: 11px; color: #4a7090; margin-left: auto; cursor: default; white-space: nowrap; }
 .az-tag { background: #0c1828; border: 1px solid #1e3454; color: #4a80b8; font-size: 11px; padding: 2px 6px; border-radius: 3px; }
 .az-tag-primary { background: rgba(0,80,160,.3); border-color: #0060c0; color: #60a0e8; }
 

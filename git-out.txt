@@ -1,6 +1,7 @@
 git add OK
-[main c609467] Rebuild dist: include POST snow ticket routes (was stale)
- 4 files changed, 34 insertions(+), 14 deletions(-)
- create mode 100644 post-test.txt
+[main 58b7675] Fix: rebuild dist with POST snow ticket routes; add restart-server utility
+ 5 files changed, 45 insertions(+), 17 deletions(-)
+ create mode 100644 restart-out.txt
+ create mode 100644 tools/restart-server.cjs
 
 

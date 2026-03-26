@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function onToggle(e) {
   switchView(e.target.checked ? 'azure' : 'snow');
-  document.getElementById('view-toggle-snow').checked = !e.target.checked;
+  document.getElementById('view-toggle-snow').checked = e.target.checked;
 }
 function onToggleSn(e) {
   switchView(e.target.checked ? 'azure' : 'snow');
@@ -370,12 +370,20 @@ function updateSnBadges() {
 
 function populateSnowEmployeeSelect() {
   const sel = document.getElementById('sn-emp-select');
-  if (!sel || azUsers.length === 0) return;
-  const currentVal = sel.value;
+  const rbSel = document.getElementById('rb-emp-select');
+  if (azUsers.length === 0) return;
   const active = azUsers.filter(u => u.status === 'active');
-  sel.innerHTML = '<option value="">-- Select employee --</option>' +
-    active.map(u => `<option value="${u.id}">${u.displayName} — ${u.department || ''}</option>`).join('');
-  if (currentVal) sel.value = currentVal;
+  const opts = active.map(u => `<option value="${u.id}">${u.displayName} — ${u.department || ''}</option>`).join('');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">-- Select employee --</option>' + opts;
+    if (cur) sel.value = cur;
+  }
+  if (rbSel) {
+    const cur = rbSel.value;
+    rbSel.innerHTML = '<option value="">Select employee…</option>' + opts;
+    if (cur) rbSel.value = cur;
+  }
 }
 
 // Submit ServiceNow form
@@ -456,6 +464,48 @@ function approveTicket(number) {
       if (currentSnTab === 'approvals') renderApprovalsTable();
       if (currentView === 'azure') azTab('logicapps');
     }).catch(() => alert('Approval failed.'));
+}
+
+// ── Azure Runbook Quick Trigger ───────────────────────────────────────────────
+function triggerRunbook() {
+  const empId  = document.getElementById('rb-emp-select').value;
+  const reason = document.getElementById('rb-reason-select').value;
+  if (!empId) { alert('Select an employee first.'); return; }
+
+  const btn = document.getElementById('rb-trigger-btn');
+  btn.disabled = true;
+  btn.textContent = '⌛ Triggering…';
+
+  fetch(API + '/snow/tickets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employeeId: empId, reason, requestedBy: 'IT Admin' })
+  })
+  .then(r => r.json())
+  .then(data => {
+    const num = data.ticket?.number;
+    if (!num) throw new Error(data.error || 'No ticket returned');
+    addAction('🚀 Runbook queued: ' + num + ' — ' + data.ticket.shortDescription?.substring(0, 60));
+    return fetch(API + '/snow/tickets/' + num + '/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approver: 'IT Admin' })
+    });
+  })
+  .then(r => r.json())
+  .then(data => {
+    const t = data.ticket;
+    addAction('✅ Logic App fired · RunId: ' + (t?.azureLogicAppRunId?.substring(0, 28) || '?'));
+    btn.disabled = false;
+    btn.textContent = '▶ Run Invoke-FullOffboardOrchestrator';
+    loadSnowTickets();
+    azTab('jobs');
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.textContent = '▶ Run Invoke-FullOffboardOrchestrator';
+    alert('Trigger failed: ' + err.message);
+  });
 }
 
 function renderOutboundLog() {
@@ -555,14 +605,15 @@ async function openTicketModal(number) {
   const closebtn = document.createElement('button');
   closebtn.className = 'sn-btn-secondary';
   closebtn.textContent = 'Close';
-  closebtn.onclick = closeModal;
+  closebtn.onclick = () => closeModal();
   footer.appendChild(closebtn);
 
-  document.getElementById('ticket-modal').classList.remove('hidden');
+  const overlay = document.getElementById('ticket-modal');
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  overlay.classList.remove('hidden');
 }
 
-function closeModal(e) {
-  if (e && e.target !== document.getElementById('ticket-modal')) return;
+function closeModal() {
   document.getElementById('ticket-modal').classList.add('hidden');
 }
 

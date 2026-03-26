@@ -140,6 +140,21 @@
             <div class="az-rb-tags"><span class="az-tag az-tag-primary">Master Runbook</span><span class="az-tag">Webhook Trigger</span></div>
           </div>
         </div>
+
+        <!-- Quick Trigger Bar -->
+        <div class="az-trigger-bar">
+          <span class="az-trigger-title">&#9889; Quick Trigger</span>
+          <select id="rb-emp-select"><option value="">Select employee&hellip;</option></select>
+          <select id="rb-reason-select">
+            <option value="Resignation">Resignation</option>
+            <option value="Termination">Termination</option>
+            <option value="Contract End">Contract End</option>
+            <option value="Role Change">Role Change</option>
+          </select>
+          <button class="az-trigger-btn" id="rb-trigger-btn" onclick="triggerRunbook()">&#9654; Run Invoke-FullOffboardOrchestrator</button>
+          <span class="az-trigger-hint" title="Or run the PowerShell demo: .\RUN-DEMO.bat">&#128712; PS: .\RUN-DEMO.bat</span>
+        </div>
+
         <div class="az-section-title">Active &amp; Recent Jobs</div>
         <div id="az-jobs-panel"><div class="az-empty">No jobs running. Trigger from ServiceNow or ask the AI to run an offboarding.</div></div>
       </div>

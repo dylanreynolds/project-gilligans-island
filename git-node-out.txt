@@ -1,0 +1,18 @@
+node : warning: in the working copy of 'dashboard/app.js', LF will be replaced 
+by CRLF the next time Git touches it
+At line:1 char:1
++ node "C:\hackathon-offboarding-mcp\tools\git-push.cjs" 2>&1 | Out-Fil ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: in the working copy of 'dashboard/index.html', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'dashboard/styles.css', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'build-out.txt', LF will be replaced by CRLF 
+the next time Git touches it
+To https://github.com/dylanreynolds/project-gilligans-island.git
+   7077006..84e9756  main -> main
+Done

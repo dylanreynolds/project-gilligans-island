@@ -57,8 +57,9 @@ async function loadUsers() {
     const r = await fetch(API + '/users');
     if (!r.ok) return;
     const data = await r.json();
-    azUsers = data.users || [];
-    updateAzSummary(data.summary);
+    azUsers = Array.isArray(data) ? data : (data.users || []);
+    const sr = await fetch(API + '/summary');
+    if (sr.ok) updateAzSummary(await sr.json());
     renderAzUsersTable();
     populateSnowEmployeeSelect();
     if (selectedUser) refreshDrawer();
@@ -67,10 +68,10 @@ async function loadUsers() {
 
 function updateAzSummary(s) {
   if (!s) return;
-  setEl('az-stat-active',     s.active     ?? '-');
-  setEl('az-stat-processing', s.offboarding ?? '-');
-  setEl('az-stat-done',       s.offboarded  ?? '-');
-  setEl('az-stat-audit',      s.totalAuditEntries ?? '-');
+  setEl('az-stat-active',     s.active      ?? '-');
+  setEl('az-stat-processing', s.offboarding  ?? '-');
+  setEl('az-stat-done',       s.offboarded   ?? '-');
+  setEl('az-stat-audit',      s.auditEntries ?? '-');
 }
 
 function renderAzUsersTable() {
@@ -95,7 +96,7 @@ function renderAzUsersTable() {
           ${filtered.map(u => `
             <tr onclick="selectUser('${u.id}')">
               <td>${u.displayName}</td>
-              <td style="font-size:11px;color:#3a6888">${u.upn}</td>
+              <td style="font-size:11px;color:#3a6888">${u.userPrincipalName}</td>
               <td>${u.department || '-'}</td>
               <td style="font-size:12px">${u.jobTitle || '-'}</td>
               <td><span class="az-status-badge ${statusBadgeClass(u.status)}">${u.status}</span></td>
@@ -121,10 +122,14 @@ function setAzFilter(btn, filter) {
   renderAzUsersTable();
 }
 
-function selectUser(id) {
-  selectedUser = azUsers.find(u => u.id === id);
-  if (!selectedUser) return;
+async function selectUser(id) {
+  const basic = azUsers.find(u => u.id === id);
+  if (!basic) return;
   azTab('users');
+  try {
+    const r = await fetch(API + '/users/' + encodeURIComponent(id));
+    selectedUser = r.ok ? await r.json() : basic;
+  } catch { selectedUser = basic; }
   openDrawer(selectedUser);
 }
 
@@ -167,15 +172,15 @@ function renderDrContent(tab) {
     c.innerHTML = `
       <div class="dr-section">Identity</div>
       ${drProp('User ID', u.id)}
-      ${drProp('UPN', u.upn)}
-      ${drProp('Email', u.mail || u.upn)}
+      ${drProp('UPN', u.userPrincipalName)}
+      ${drProp('Email', u.mail || u.userPrincipalName)}
       ${drProp('Status', u.status)}
       ${drProp('Account Enabled', u.accountEnabled ? 'Yes' : 'No')}
       ${drProp('Sessions Active', u.sessionsRevoked ? 'Revoked' : 'Active')}
       <div class="dr-section">Organisation</div>
       ${drProp('Job Title', u.jobTitle)}
       ${drProp('Department', u.department)}
-      ${drProp('Manager', u.manager || '-')}
+      ${drProp('Manager', u.managerName || u.manager || '-')}
       ${drProp('Location', u.officeLocation || '-')}
       <div class="dr-section">Licensing</div>
       ${drProp('Licenses', (u.licenses || []).map(l => l.skuName || l.skuId).join(', ') || 'None')}
@@ -387,7 +392,7 @@ function submitSnowForm(e) {
   fetch(API + '/snow/tickets', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ employeeId: emp.id, employeeName: emp.displayName, employeeEmail: emp.upn, reason, requestedBy: reqBy, notes })
+    body: JSON.stringify({ employeeId: emp.id, employeeName: emp.displayName, employeeEmail: emp.userPrincipalName, reason, requestedBy: reqBy, notes })
   }).then(r => r.json()).then(data => {
     addAction('ServiceNow ticket ' + data.ticket?.number + ' created for ' + emp.displayName);
     document.getElementById('sn-form').reset();

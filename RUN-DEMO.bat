@@ -1,9 +1,20 @@
 @echo off
-title OffboardIQ — Run Demo
-color 0E
+title OffboardIQ DEMO
+color 0B
 cd /d "%~dp0"
 
-:: ── Check server is running ───────────────────────────────────
+echo.
+echo   OffboardIQ ^| DEMO
+echo.
+echo  ___    __   __  _                             _  ___  ___    _   ____   _____  __  __   ___ 
+echo  / _ \  / _^| / _^|^| ^|__    ___    __ _  _ __  __^| ^|^|_ _^|/ _ \  ^| ^| ^|  _ \ ^| ____^|^|  \/  ^| / _ \
+echo ^| ^| ^| ^|^| ^|_ ^| ^|_ ^| '_ \  / _ \  / _` ^|^| '__^|/ _` ^| ^| ^|^| ^| ^| ^| ^| ^| ^| ^| ^|^|  _^|  ^| ^|\/^| ^|^| ^| ^| ^|
+echo ^| ^|_^| ^|^|  _^|^|  _^|^| ^|_) ^|^| (_) ^|^| (_^| ^|^| ^|  ^| (_^| ^| ^| ^|^| ^|_^| ^| ^| ^| ^| ^|_^| ^|^| ^|___ ^| ^|  ^| ^|^| ^|_^| ^|
+echo  \___/ ^|_^|  ^|_^|  ^|_.__/  \___/  \__,_^|^|_^|   \__,_^|^|___^|\__\_\ ^| ^| ^|____/ ^|_____^|^|_^|  ^|_^| \___/
+echo                                                               ^|_^|
+echo.
+
+:: Check server is running
 echo  Checking server connection...
 curl -s http://localhost:3000/api/summary >nul 2>&1
 if %errorlevel% neq 0 (
@@ -17,6 +28,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:menu
 echo.
 echo  =============================================================
 echo   OffboardIQ  ^|  Hackathon Demo Menu
@@ -24,41 +36,42 @@ echo  =============================================================
 echo.
 echo   Pick a demo scenario:
 echo.
-echo   [1]  Offboard Adele Vance              (standard resignation)
-echo   [2]  Offboard Isaiah Langer            (admin user - has Global Admin role)
-echo   [3]  Offboard Joni Sherman             (Legal dept user - New York)
-echo   [4]  Offboard Megan Bowen              (with Teams API error simulation)
-echo   [5]  Offboard a CUSTOM user            (type your own name)
+echo   [1]  Standard Resignation       (pick from any active user)
+echo   [2]  Executive / Admin           (Director, VP, Manager or Admin roles)
+echo   [3]  Contract End                (Sales / Marketing / Legal / Finance users)
+echo   [4]  Resignation + Teams error   (Teams API throttle simulation)
+echo   [5]  Enter user manually         (type full name + reason)
 echo   [6]  Open dashboard in browser
 echo   [7]  Reset all users to Active state
 echo   [0]  Exit
 echo.
 set /p CHOICE="  Enter choice [0-7]: "
 
-if "%CHOICE%"=="1" goto demo_adele
-if "%CHOICE%"=="2" goto demo_isaiah
-if "%CHOICE%"=="3" goto demo_joni
-if "%CHOICE%"=="4" goto demo_megan_error
+if "%CHOICE%"=="1" goto demo_resignation
+if "%CHOICE%"=="2" goto demo_admin
+if "%CHOICE%"=="3" goto demo_contractor
+if "%CHOICE%"=="4" goto demo_error
 if "%CHOICE%"=="5" goto demo_custom
 if "%CHOICE%"=="6" goto open_browser
 if "%CHOICE%"=="7" goto reset
 if "%CHOICE%"=="0" exit /b 0
-echo  Invalid choice. && goto menu_end
+echo  Invalid choice.
+goto menu
 
-:demo_adele
-PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" -UserName "Adele Vance" -Reason "Resignation"
+:demo_resignation
+PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" -FilterBy "standard" -Reason "Resignation"
 goto menu_end
 
-:demo_isaiah
-PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" -UserName "Isaiah Langer" -Reason "Termination"
+:demo_admin
+PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" -FilterBy "admin" -Reason "Termination"
 goto menu_end
 
-:demo_joni
-PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" -UserName "Joni Sherman" -Reason "Contract End"
+:demo_contractor
+PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" -FilterBy "contractor" -Reason "Contract End"
 goto menu_end
 
-:demo_megan_error
-PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" -UserName "Megan Bowen" -Reason "Resignation" -SimulateError
+:demo_error
+PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" -FilterBy "standard" -Reason "Resignation" -SimulateError
 goto menu_end
 
 :demo_custom
@@ -68,14 +81,14 @@ PowerShell -NoProfile -ExecutionPolicy Bypass -File "demo\offboarding-demo.ps1" 
 goto menu_end
 
 :open_browser
-start http://localhost:3000
+start http://localhost:3000/dashboard
 goto menu_end
 
 :reset
 echo.
 echo  Resetting all users to Active state...
 curl -s -X POST http://localhost:3000/api/reset >nul
-echo  Done — all 25 users restored to Active.
+echo  Done -- all 25 users restored to Active.
 
 :menu_end
 echo.

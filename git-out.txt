@@ -1,7 +1,6 @@
 git add OK
-[main 58b7675] Fix: rebuild dist with POST snow ticket routes; add restart-server utility
- 5 files changed, 45 insertions(+), 17 deletions(-)
- create mode 100644 restart-out.txt
- create mode 100644 tools/restart-server.cjs
+[main af59327] Fix: toggle one-click, modal close button; add Azure Runbooks quick trigger
+ 8 files changed, 93 insertions(+), 16 deletions(-)
+ create mode 100644 health.txt
 
 

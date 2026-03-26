@@ -1,338 +1,594 @@
-// ============================================================
-// OffboardIQ Dashboard — Live polling UI
-// Polls /api/users and /api/audit-log every 2 seconds
-// ============================================================
+/* OffboardIQ Dual-Pane Dashboard — app.js */
+'use strict';
 
-const POLL_INTERVAL = 2000;
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentView    = 'azure';   // 'azure' | 'snow'
+let currentAzTab   = 'runbooks';
+let currentSnTab   = 'catalog';
+let currentAzFilter= 'all';
+let azUsers        = [];
+let snowTickets    = [];
+let selectedUser   = null;
+let currentDrTab   = 'overview';
+let pollTimer      = null;
+let actionQueue    = [];
 
-let allUsers = [];
-let selectedUserId = null;
-let currentFilter = "all";
-let searchQuery = "";
-let lastAuditCount = 0;
-let activeTab = "checklist";
+const API = 'http://localhost:3000/api';
 
-const AVATAR_COLORS = [
-  "#3b82f6","#8b5cf6","#ec4899","#f59e0b","#10b981",
-  "#06b6d4","#6366f1","#ef4444","#84cc16","#f97316",
-];
+// ── Boot ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('view-toggle').addEventListener('change', onToggle);
+  document.getElementById('view-toggle-snow').addEventListener('change', onToggleSn);
+  loadUsers();
+  startPolling();
+});
 
-function avatarColor(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+function onToggle(e) {
+  switchView(e.target.checked ? 'azure' : 'snow');
+  document.getElementById('view-toggle-snow').checked = !e.target.checked;
+}
+function onToggleSn(e) {
+  switchView(e.target.checked ? 'azure' : 'snow');
+  document.getElementById('view-toggle').checked = e.target.checked;
 }
 
-function initials(name) {
-  const parts = name.split(" ");
-  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+function switchView(view) {
+  currentView = view;
+  document.getElementById('view-azure').classList.toggle('hidden', view !== 'azure');
+  document.getElementById('view-snow').classList.toggle('hidden', view !== 'snow');
+  document.getElementById('nav-azure').classList.toggle('hidden', view !== 'azure');
+  document.getElementById('nav-snow').classList.toggle('hidden', view !== 'snow');
+  if (view === 'snow') { loadSnowTickets(); }
 }
 
-// ---- Fetch & Render ----
+// ── Polling ───────────────────────────────────────────────────────────────────
+function startPolling() {
+  poll();
+  pollTimer = setInterval(poll, 3000);
+}
 
-async function fetchAll() {
+async function poll() {
+  await Promise.all([loadUsers(), loadSnowTickets()]).catch(() => {});
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+async function loadUsers() {
   try {
-    const [usersRes, auditRes] = await Promise.all([
-      fetch("/api/users"),
-      fetch("/api/audit-log?limit=6"),
-    ]);
-    allUsers = await usersRes.json();
-    const { entries: auditEntries } = await auditRes.json();
-
-    renderSummary();
-    renderUserList();
-    if (selectedUserId) renderUserDetail(allUsers.find((u) => u.id === selectedUserId));
-    renderAuditFeed(auditEntries);
-
-    document.getElementById("connection-status").innerHTML =
-      `<span class="dot green"></span> Live`;
-  } catch {
-    document.getElementById("connection-status").innerHTML =
-      `<span class="dot red"></span> Disconnected`;
-  }
+    const r = await fetch(API + '/users');
+    if (!r.ok) return;
+    const data = await r.json();
+    azUsers = data.users || [];
+    updateAzSummary(data.summary);
+    renderAzUsersTable();
+    populateSnowEmployeeSelect();
+    if (selectedUser) refreshDrawer();
+  } catch {}
 }
 
-function renderSummary() {
-  document.getElementById("stat-active").textContent =
-    allUsers.filter((u) => u.status === "active").length;
-  document.getElementById("stat-offboarding").textContent =
-    allUsers.filter((u) => u.status === "offboarding").length;
-  document.getElementById("stat-offboarded").textContent =
-    allUsers.filter((u) => u.status === "offboarded").length;
+function updateAzSummary(s) {
+  if (!s) return;
+  setEl('az-stat-active',     s.active     ?? '-');
+  setEl('az-stat-processing', s.offboarding ?? '-');
+  setEl('az-stat-done',       s.offboarded  ?? '-');
+  setEl('az-stat-audit',      s.totalAuditEntries ?? '-');
 }
 
-function filteredUsers() {
-  return allUsers
-    .filter((u) => currentFilter === "all" || u.status === currentFilter)
-    .filter((u) =>
-      !searchQuery ||
-      u.displayName.toLowerCase().includes(searchQuery) ||
-      u.department.toLowerCase().includes(searchQuery)
-    );
+function renderAzUsersTable() {
+  const wrap = document.getElementById('az-users-table');
+  if (!wrap) return;
+  const search = (document.getElementById('az-user-search')?.value || '').toLowerCase();
+  const filtered = azUsers.filter(u => {
+    if (search && !u.displayName.toLowerCase().includes(search) && !u.department?.toLowerCase().includes(search)) return false;
+    if (currentAzFilter === 'active' && u.status !== 'active') return false;
+    if (currentAzFilter === 'offboarding' && u.status !== 'offboarding') return false;
+    if (currentAzFilter === 'offboarded' && u.status !== 'offboarded') return false;
+    return true;
+  });
+  if (filtered.length === 0) { wrap.innerHTML = '<div class="az-empty">No users match the filter.</div>'; return; }
+  wrap.innerHTML = `
+    <div class="az-user-table-wrap">
+      <table class="az-table">
+        <thead><tr>
+          <th>Display Name</th><th>UPN</th><th>Department</th><th>Title</th><th>Status</th><th>Account</th>
+        </tr></thead>
+        <tbody>
+          ${filtered.map(u => `
+            <tr onclick="selectUser('${u.id}')">
+              <td>${u.displayName}</td>
+              <td style="font-size:11px;color:#3a6888">${u.upn}</td>
+              <td>${u.department || '-'}</td>
+              <td style="font-size:12px">${u.jobTitle || '-'}</td>
+              <td><span class="az-status-badge ${statusBadgeClass(u.status)}">${u.status}</span></td>
+              <td style="font-size:11px">${u.accountEnabled ? '<span style="color:#36c45a">Enabled</span>' : '<span style="color:#e84040">Disabled</span>'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
-function renderUserList() {
-  const ul = document.getElementById("user-list");
-  const users = filteredUsers();
-  if (!users.length) {
-    ul.innerHTML = `<div class="loading">No users match filter</div>`;
-    return;
-  }
-
-  ul.innerHTML = users.map((u) => {
-    const color = avatarColor(u.displayName);
-    const dotClass = `dot-${u.status}`;
-    const selected = u.id === selectedUserId ? " selected" : "";
-    return `
-      <div class="user-item${selected}" onclick="selectUser('${u.id}')">
-        <div class="user-avatar-sm" style="background:${color}22;color:${color};">${initials(u.displayName)}</div>
-        <div class="user-item-info">
-          <div class="user-item-name">${u.displayName}</div>
-          <div class="user-item-dept">${u.department}</div>
-        </div>
-        <div class="user-status-dot ${dotClass}" title="${u.status}"></div>
-      </div>`;
-  }).join("");
+function statusBadgeClass(s) {
+  return s === 'active' ? 'badge-active' : s === 'offboarding' ? 'badge-offboarding' : 'badge-offboarded';
 }
 
-function renderAuditFeed(entries) {
-  if (entries.length === lastAuditCount) return;
-  lastAuditCount = entries.length;
+function filterAzUsers() { renderAzUsersTable(); }
 
-  const feed = document.getElementById("audit-feed");
-  feed.innerHTML = entries.map((e) => {
-    const time = new Date(e.timestamp).toLocaleTimeString("en-AU");
-    return `<div class="audit-entry">
-      <span class="ae-user">${e.userName.split(" ")[0]}</span>
-      <span class="ae-action">→ ${e.action}</span>
-      <span class="ae-time">${time}</span>
-    </div>`;
-  }).reverse().join("");
+function setAzFilter(btn, filter) {
+  currentAzFilter = filter;
+  document.querySelectorAll('.az-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAzUsersTable();
 }
-
-// ---- User Detail ----
 
 function selectUser(id) {
-  selectedUserId = id;
-  document.getElementById("welcome-panel").classList.add("hidden");
-  document.getElementById("user-panel").classList.remove("hidden");
-  renderUserList();
-  const user = allUsers.find((u) => u.id === id);
-  if (user) renderUserDetail(user);
+  selectedUser = azUsers.find(u => u.id === id);
+  if (!selectedUser) return;
+  azTab('users');
+  openDrawer(selectedUser);
 }
 
-function renderUserDetail(user) {
-  if (!user) return;
-
-  const color = avatarColor(user.displayName);
-  document.getElementById("detail-avatar").textContent = initials(user.displayName);
-  document.getElementById("detail-avatar").style.background = `${color}22`;
-  document.getElementById("detail-avatar").style.color = color;
-  document.getElementById("detail-name").textContent = user.displayName;
-  document.getElementById("detail-title-dept").textContent = `${user.jobTitle} · ${user.department} · ${user.officeLocation}`;
-  document.getElementById("detail-contact").textContent = `${user.userPrincipalName} · ${user.phoneNumber ?? ""}`;
-
-  const badge = document.getElementById("detail-status-badge");
-  badge.textContent = user.status.charAt(0).toUpperCase() + user.status.slice(1);
-  badge.className = `status-badge status-${user.status}`;
-  document.getElementById("detail-account-state").textContent =
-    user.accountEnabled ? "✅ Account Enabled" : "🔒 Account Disabled";
-  document.getElementById("detail-account-state").style.color =
-    user.accountEnabled ? "var(--success)" : "var(--error)";
-  document.getElementById("detail-account-state").style.fontSize = "12px";
-  document.getElementById("detail-account-state").style.marginTop = "4px";
-
-  // Render active tab
-  if (activeTab === "checklist") renderChecklist(user);
-  else if (activeTab === "identity") renderIdentity(user);
-  else if (activeTab === "teams") renderTeams(user);
-  else if (activeTab === "hardware") renderHardware(user);
-  else if (activeTab === "avd") renderAvd(user);
-  else if (activeTab === "audit") renderAuditTab(user.id);
+// ── Drawer ────────────────────────────────────────────────────────────────────
+function openDrawer(user) {
+  const d = document.getElementById('az-user-drawer');
+  if (!d) return;
+  d.classList.remove('hidden');
+  document.getElementById('az-dr-avatar').textContent = user.displayName.charAt(0);
+  document.getElementById('az-dr-name').textContent = user.displayName;
+  document.getElementById('az-dr-sub').textContent = (user.jobTitle || '') + ' · ' + (user.department || '');
+  drTab('overview');
 }
 
-function renderChecklist(user) {
-  const grid = document.getElementById("checklist-grid");
-  const cl = user.checklist;
-  if (!cl) {
-    grid.innerHTML = `<div class="loading" style="grid-column:1/-1">No offboarding task started. Ask the AI: <em>Offboard ${user.displayName}</em></div>`;
-    return;
+function closeDrawer() {
+  document.getElementById('az-user-drawer')?.classList.add('hidden');
+  selectedUser = null;
+}
+
+function refreshDrawer() {
+  if (selectedUser) {
+    selectedUser = azUsers.find(u => u.id === selectedUser.id) || selectedUser;
+    openDrawer(selectedUser);
   }
-  const items = [
-    { key: "identity",        icon: "🔐", label: "Identity & Access",        sub: "Disable account, revoke sessions, remove groups/roles" },
-    { key: "teamsAndCalling", icon: "📞", label: "Teams & Calling",           sub: "Disable voice, release phone number, set voicemail" },
-    { key: "licensing",       icon: "🎫", label: "M365 Licensing",            sub: "Remove all assigned licenses" },
-    { key: "mailbox",         icon: "📧", label: "Mailbox",                   sub: "OOO reply, delegate access, convert to shared" },
-    { key: "avd",             icon: "🖥️", label: "Azure Virtual Desktop",     sub: "Disconnect sessions, remove host pool access" },
-    { key: "hardware",        icon: "💻", label: "Hardware Discovery",         sub: "Asset report and return shipment created" },
-    { key: "printerAccess",   icon: "🖨️", label: "Printer Access",            sub: "Removed from all printer security groups" },
-  ];
-  grid.innerHTML = items.map((item) => {
-    const done = cl[item.key];
-    const cls = done ? "done" : "pending";
-    return `
-      <div class="checklist-card ${cls}">
-        <div class="checklist-icon">${item.icon}</div>
+}
+
+function drTab(tab, btn) {
+  currentDrTab = tab;
+  document.querySelectorAll('.az-dr-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else { const first = document.querySelector('.az-dr-tab'); if (first) first.classList.add('active'); }
+  renderDrContent(tab);
+}
+
+function renderDrContent(tab) {
+  const c = document.getElementById('az-dr-content');
+  if (!c || !selectedUser) return;
+  const u = selectedUser;
+  if (tab === 'overview') {
+    c.innerHTML = `
+      <div class="dr-section">Identity</div>
+      ${drProp('User ID', u.id)}
+      ${drProp('UPN', u.upn)}
+      ${drProp('Email', u.mail || u.upn)}
+      ${drProp('Status', u.status)}
+      ${drProp('Account Enabled', u.accountEnabled ? 'Yes' : 'No')}
+      ${drProp('Sessions Active', u.sessionsRevoked ? 'Revoked' : 'Active')}
+      <div class="dr-section">Organisation</div>
+      ${drProp('Job Title', u.jobTitle)}
+      ${drProp('Department', u.department)}
+      ${drProp('Manager', u.manager || '-')}
+      ${drProp('Location', u.officeLocation || '-')}
+      <div class="dr-section">Licensing</div>
+      ${drProp('Licenses', (u.licenses || []).map(l => l.skuName || l.skuId).join(', ') || 'None')}
+      ${drProp('Groups', (u.groupMemberships?.length || 0) + ' groups')}
+      ${drProp('Roles', (u.roleAssignments?.length || 0) + ' roles')}
+    `;
+  } else if (tab === 'teams') {
+    const t = u.teamsConfig || {};
+    c.innerHTML = `
+      <div class="dr-section">Teams Calling</div>
+      ${drProp('Enterprise Voice', t.enterpriseVoiceEnabled ? 'Enabled' : 'Disabled')}
+      ${drProp('Phone Number', t.phoneNumber || 'None')}
+      ${drProp('Call Forwarding', t.callForwardingEnabled ? t.forwardTarget || 'On' : 'Off')}
+      ${drProp('Voicemail', t.voicemailEnabled ? 'Enabled' : 'Disabled')}
+      ${drProp('Teams Policy', t.teamsCallingPolicy || '-')}
+    `;
+  } else if (tab === 'hardware') {
+    const hw = u.hardware || [];
+    c.innerHTML = hw.length ? hw.map(h => `
+      <div style="background:#0c1020;border:1px solid #1e2a3a;border-radius:4px;padding:12px;margin-bottom:8px">
+        <div style="color:#5898d8;font-weight:600;margin-bottom:6px">${h.type} — ${h.model}</div>
+        ${drProp('Serial', h.serialNumber)}
+        ${drProp('Asset Tag', h.assetTag)}
+        ${drProp('Status', h.returnStatus || 'Assigned')}
+      </div>
+    `).join('') : '<div class="az-empty">No hardware assigned.</div>';
+  } else if (tab === 'avd') {
+    const avd = u.avdAssignments || [];
+    c.innerHTML = avd.length ? avd.map(a => `
+      <div style="background:#0c1020;border:1px solid #1e2a3a;border-radius:4px;padding:12px;margin-bottom:8px">
+        <div style="color:#5898d8;font-weight:600;margin-bottom:6px">${a.hostPoolName}</div>
+        ${drProp('App Group', a.applicationGroup)}
+        ${drProp('Subscription', a.subscriptionId || '-')}
+        ${drProp('Status', a.removed ? 'Access Removed' : 'Access Active')}
+      </div>
+    `).join('') : '<div class="az-empty">No AVD assignments.</div>';
+  } else if (tab === 'auditdr') {
+    loadUserAudit(u.id, c);
+  }
+}
+
+async function loadUserAudit(userId, container) {
+  try {
+    const r = await fetch(API + '/audit');
+    if (!r.ok) return;
+    const data = await r.json();
+    const entries = (data.entries || []).filter(e => e.userId === userId || e.targetUser?.id === userId);
+    if (!entries.length) { container.innerHTML = '<div class="az-empty">No audit entries for this user.</div>'; return; }
+    container.innerHTML = entries.slice(-20).reverse().map(e => `
+      <div class="az-audit-row">
+        <span class="az-audit-time">${fmtTime(e.timestamp)}</span>
+        <span class="az-audit-tool">${e.tool}</span>
+        <span class="az-audit-result">${e.result?.substring(0, 80) || ''}</span>
+      </div>
+    `).join('');
+  } catch {}
+}
+
+function drProp(label, val) {
+  return `<div class="dr-prop"><span class="dr-prop-label">${label}</span><span class="dr-prop-val">${val ?? '-'}</span></div>`;
+}
+
+// ── Azure Tab switching ───────────────────────────────────────────────────────
+function azTab(tab) {
+  currentAzTab = tab;
+  document.querySelectorAll('.az-tab').forEach(t => t.classList.add('hidden'));
+  const el = document.getElementById('aztab-' + tab);
+  if (el) el.classList.remove('hidden');
+  document.querySelectorAll('.az-nav-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.az-nav-item').forEach(i => {
+    if (i.getAttribute('onclick') === "azTab('" + tab + "')") i.classList.add('active');
+  });
+  const labels = { runbooks:'Runbooks', logicapps:'Logic Apps', users:'Entra ID Users', jobs:'Jobs', audit:'Audit Log' };
+  setEl('az-bc-current', labels[tab] || tab);
+  if (tab === 'audit') loadFullAudit();
+  if (tab === 'logicapps') renderLogicAppRuns();
+  if (tab === 'jobs') renderJobsTab();
+}
+
+async function loadFullAudit() {
+  try {
+    const r = await fetch(API + '/audit');
+    if (!r.ok) return;
+    const data = await r.json();
+    const wrap = document.getElementById('az-audit-full');
+    if (!wrap) return;
+    const entries = (data.entries || []).slice(-50).reverse();
+    wrap.innerHTML = entries.length ? entries.map(e => `
+      <div class="az-audit-row">
+        <span class="az-audit-time">${fmtTime(e.timestamp)}</span>
+        <span class="az-audit-tool">${e.tool}</span>
+        <span class="az-audit-user">${e.targetUser?.displayName || ''}</span>
+        <span class="az-audit-result">${e.result?.substring(0, 100) || ''}</span>
+      </div>
+    `).join('') : '<div class="az-empty">No audit entries yet.</div>';
+  } catch {}
+}
+
+function renderLogicAppRuns() {
+  const el = document.getElementById('az-la-runs');
+  if (!el) return;
+  const azTickets = snowTickets.filter(t => t.azureLogicAppRunId);
+  if (!azTickets.length) { el.innerHTML = '<div class="az-empty">No runs yet.</div>'; return; }
+  el.innerHTML = azTickets.map(t => {
+    const cls = t.state === 'Resolved' ? 'run-succeeded' : t.state === 'In Progress' ? 'run-running' : 'run-running';
+    const label = t.state === 'Resolved' ? 'Succeeded' : 'Running';
+    return `<div class="az-la-run">
+      <span class="az-la-run-id">${t.azureLogicAppRunId}</span>
+      <span style="font-size:11px;color:#3a6888">${t.number}</span>
+      <span style="font-size:11px;color:#6888a8">${t.employeeName}</span>
+      <span class="az-la-run-status ${cls}">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderJobsPanel(tickets) {
+  const el = document.getElementById('az-jobs-panel');
+  if (!el) return;
+  const active = tickets.filter(t => t.azureRunbookJobId);
+  if (!active.length) { el.innerHTML = '<div class="az-empty">No jobs running.</div>'; return; }
+  el.innerHTML = active.map(t => renderJobItem(t)).join('');
+}
+
+function renderJobsTab() {
+  const el = document.getElementById('az-jobs-full');
+  if (!el) return;
+  const active = snowTickets.filter(t => t.azureRunbookJobId);
+  if (!active.length) { el.innerHTML = '<div class="az-empty">No jobs yet.</div>'; return; }
+  el.innerHTML = active.map(t => renderJobItem(t)).join('');
+}
+
+function renderJobItem(t) {
+  const state = t.state === 'Resolved' ? 'Completed' : 'Running';
+  const steps = t.workNotes ? t.workNotes.filter(n => n.type === 'azure').map(n => n.text).join('\n') : '(waiting for runbook output...)';
+  return `
+    <div class="az-job-item">
+      <div class="az-job-header">
+        <span class="az-job-name">Invoke-FullOffboardOrchestrator</span>
+        <span class="az-job-id">${t.azureRunbookJobId}</span>
+        <span class="az-la-run-status ${state === 'Completed' ? 'run-succeeded' : 'run-running'}">${state}</span>
+      </div>
+      <div style="font-size:12px;color:#4a6888;margin-bottom:8px">Employee: ${t.employeeName} · Ticket: ${t.number}</div>
+      <div class="az-job-output">${steps || '> Waiting for Runbook output...'}</div>
+    </div>
+  `;
+}
+
+// ── ServiceNow ────────────────────────────────────────────────────────────────
+function snTab(tab) {
+  currentSnTab = tab;
+  document.querySelectorAll('.sn-tab').forEach(t => t.classList.add('hidden'));
+  const el = document.getElementById('sntab-' + tab);
+  if (el) el.classList.remove('hidden');
+  document.querySelectorAll('.sn-nav-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.sn-nav-item').forEach(i => {
+    if (i.getAttribute('onclick') === "snTab('" + tab + "')") i.classList.add('active');
+  });
+  if (tab === 'requests') renderTicketsTable();
+  if (tab === 'approvals') renderApprovalsTable();
+  if (tab === 'outbound') renderOutboundLog();
+  if (tab === 'reports') updateReports();
+}
+
+async function loadSnowTickets() {
+  try {
+    const r = await fetch(API + '/snow/tickets');
+    if (!r.ok) return;
+    const data = await r.json();
+    snowTickets = data.tickets || [];
+    updateSnBadges();
+    if (currentSnTab === 'requests') renderTicketsTable();
+    if (currentSnTab === 'approvals') renderApprovalsTable();
+    if (currentSnTab === 'outbound') renderOutboundLog();
+    if (currentSnTab === 'reports') updateReports();
+    if (currentAzTab === 'logicapps') renderLogicAppRuns();
+    if (currentAzTab === 'jobs') renderJobsTab();
+    renderJobsPanel(snowTickets);
+  } catch {}
+}
+
+function updateSnBadges() {
+  const open = snowTickets.filter(t => t.state !== 'Resolved' && t.state !== 'Cancelled').length;
+  const pend = snowTickets.filter(t => t.approvalState === 'requested').length;
+  setEl('sn-badge-open', open);
+  setEl('sn-badge-approvals', pend);
+}
+
+function populateSnowEmployeeSelect() {
+  const sel = document.getElementById('sn-emp-select');
+  if (!sel || azUsers.length === 0) return;
+  const currentVal = sel.value;
+  const active = azUsers.filter(u => u.status === 'active');
+  sel.innerHTML = '<option value="">-- Select employee --</option>' +
+    active.map(u => `<option value="${u.id}">${u.displayName} — ${u.department || ''}</option>`).join('');
+  if (currentVal) sel.value = currentVal;
+}
+
+// Submit ServiceNow form
+function submitSnowForm(e) {
+  e.preventDefault();
+  const empId   = document.getElementById('sn-emp-select').value;
+  const reason  = document.getElementById('sn-reason-select').value;
+  const reqBy   = document.getElementById('sn-requestedby').value;
+  const notes   = document.getElementById('sn-notes').value;
+  if (!empId) { alert('Please select an employee.'); return; }
+  const emp = azUsers.find(u => u.id === empId);
+  if (!emp) return;
+
+  fetch(API + '/snow/tickets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employeeId: emp.id, employeeName: emp.displayName, employeeEmail: emp.upn, reason, requestedBy: reqBy, notes })
+  }).then(r => r.json()).then(data => {
+    addAction('ServiceNow ticket ' + data.ticket?.number + ' created for ' + emp.displayName);
+    document.getElementById('sn-form').reset();
+    document.getElementById('sn-requestedby').value = 'Patti Fernandez';
+    snTab('requests');
+    loadSnowTickets();
+  }).catch(() => alert('Failed to create ticket.'));
+}
+
+function renderTicketsTable() {
+  const el = document.getElementById('sn-tickets-table');
+  if (!el) return;
+  if (!snowTickets.length) { el.innerHTML = '<div class="sn-empty">No requests yet.</div>'; return; }
+  el.innerHTML = `
+    <div class="sn-table-header">
+      <div>Number</div><div>Employee</div><div>Reason</div><div>State</div><div>Approval</div><div>Requested</div>
+    </div>
+    ${snowTickets.map(t => `
+      <div class="sn-table-row" onclick="openTicketModal('${t.number}')">
+        <div style="font-family:'Cascadia Code',monospace;color:#5830a0;font-size:12px">${t.number}</div>
+        <div style="font-weight:500">${t.employeeName}</div>
+        <div style="color:#666">${t.reason}</div>
+        <div><span class="sn-status ${snStateCss(t.state)}">${t.state}</span></div>
+        <div><span class="sn-approval ${snaStateCss(t.approvalState)}">${t.approvalState}</span></div>
+        <div style="font-size:11px;color:#9090a0">${fmtDate(t.createdAt)}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderApprovalsTable() {
+  const el = document.getElementById('sn-approvals-table');
+  if (!el) return;
+  const pending = snowTickets.filter(t => t.approvalState === 'requested');
+  if (!pending.length) { el.innerHTML = '<div class="sn-empty">No pending approvals.</div>'; return; }
+  el.innerHTML = pending.map(t => `
+    <div style="background:#fff;border:1px solid #d0d0d8;border-radius:4px;padding:16px 20px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <span style="font-family:'Cascadia Code',monospace;font-size:12px;color:#5830a0">${t.number}</span>
+        <span style="font-weight:600">${t.employeeName}</span>
+        <span style="color:#666;font-size:13px">${t.reason}</span>
+        <span style="margin-left:auto;font-size:12px;color:#9090a0">${fmtDate(t.createdAt)}</span>
+      </div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px">Requested by: ${t.requestedBy}</div>
+      <div style="display:flex;gap:10px">
+        <button class="sn-btn-primary" onclick="approveTicket('${t.number}')">Approve</button>
+        <button class="sn-btn-secondary" style="border-color:#f0c0c0;color:#a04040" onclick="openTicketModal('${t.number}')">View Details</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function approveTicket(number) {
+  fetch(API + '/snow/tickets/' + number + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approver: 'IT Admin' }) })
+    .then(r => r.json())
+    .then(data => {
+      const t = data.ticket;
+      addAction('APPROVED: ' + t.number + ' → Azure Logic App triggered · Run: ' + t.azureLogicAppRunId?.substring(0, 20));
+      loadSnowTickets();
+      renderOutboundLog();
+      if (currentSnTab === 'approvals') renderApprovalsTable();
+      if (currentView === 'azure') azTab('logicapps');
+    }).catch(() => alert('Approval failed.'));
+}
+
+function renderOutboundLog() {
+  const el = document.getElementById('sn-outbound-log');
+  if (!el) return;
+  const fired = snowTickets.filter(t => t.azureLogicAppRunId);
+  if (!fired.length) { el.innerHTML = '<div class="sn-empty">No outbound calls yet.</div>'; return; }
+  el.innerHTML = fired.map(t => `
+    <div class="sn-ob-call">
+      <span class="sn-ob-call-time">${fmtTime(t.approvedAt || t.updatedAt)}</span>
+      <span class="sn-ob-call-ticket">${t.number}</span>
+      <span class="sn-ob-call-status ob-ok">202 Accepted</span>
+      <span class="sn-ob-az-id">RunId: ${t.azureLogicAppRunId}</span>
+    </div>
+  `).join('');
+}
+
+function updateReports() {
+  setEl('rpt-total',    snowTickets.length);
+  setEl('rpt-resolved', snowTickets.filter(t => t.state === 'Resolved').length);
+  setEl('rpt-pending',  snowTickets.filter(t => t.state === 'In Progress').length);
+  setEl('rpt-azure',    snowTickets.filter(t => t.azureLogicAppRunId).length);
+}
+
+// ── Ticket Modal ──────────────────────────────────────────────────────────────
+async function openTicketModal(number) {
+  const t = snowTickets.find(x => x.number === number);
+  if (!t) return;
+
+  document.getElementById('modal-num').textContent  = t.number;
+  document.getElementById('modal-desc').textContent = 'Offboarding Request — ' + t.employeeName;
+
+  const body = document.getElementById('modal-body');
+  body.innerHTML = `
+    <div class="modal-field-grid">
+      <div class="modal-field"><div class="modal-field-label">Employee</div><div class="modal-field-val">${t.employeeName}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Email</div><div class="modal-field-val">${t.employeeEmail || '-'}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Reason</div><div class="modal-field-val">${t.reason}</div></div>
+      <div class="modal-field"><div class="modal-field-label">State</div><div class="modal-field-val"><span class="sn-status ${snStateCss(t.state)}">${t.state}</span></div></div>
+      <div class="modal-field"><div class="modal-field-label">Approval</div><div class="modal-field-val"><span class="sn-approval ${snaStateCss(t.approvalState)}">${t.approvalState}</span></div></div>
+      <div class="modal-field"><div class="modal-field-label">Requested By</div><div class="modal-field-val">${t.requestedBy}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Created</div><div class="modal-field-val">${fmtTime(t.createdAt)}</div></div>
+      <div class="modal-field"><div class="modal-field-label">Updated</div><div class="modal-field-val">${fmtTime(t.updatedAt)}</div></div>
+    </div>
+
+    ${t.approvalState !== 'requested' && t.approvalState !== 'not_required' ? '' : `
+      <div class="modal-section-title">Approval</div>
+      <div class="approval-block">
         <div>
-          <div class="checklist-label">${item.label}</div>
-          <div class="checklist-sub">${item.sub}</div>
+          <div class="modal-field-label">Awaiting Manager Approval</div>
+          <div class="approval-name">Patti Fernandez (CEO / Global Admin)</div>
         </div>
-        <div class="checklist-tick">${done ? "✅" : "⬜"}</div>
-      </div>`;
-  }).join("");
-}
+        <div class="approval-status">
+          ${t.approvalState === 'requested' ?
+            '<button class="sn-btn-primary" onclick="approveTicket(\'' + t.number + '\');closeModal()">Approve</button>' :
+            '<span class="sn-approval sna-approved">Approved</span>'}
+        </div>
+      </div>
+    `}
 
-function renderIdentity(user) {
-  const grid = document.getElementById("identity-grid");
-  grid.innerHTML = `
-    ${infoCard("Account State",   user.accountEnabled ? "Enabled" : "Disabled",       user.accountEnabled ? "ok" : "error")}
-    ${infoCard("Sessions Revoked", user.sessionsRevoked ? "Yes — all tokens invalidated" : "No", user.sessionsRevoked ? "ok" : "warn")}
-    ${infoCard("Password Reset",  user.passwordReset ? "Yes" : "No", user.passwordReset ? "ok" : "warn")}
-    ${infoCard("Group Memberships", user.licenseCount + " licenses",   "")}
-    ${infoCard("UPN",             user.userPrincipalName, "muted")}
-    ${infoCard("User ID",         user.id, "muted")}
+    ${t.azureLogicAppRunId ? `
+      <div class="modal-section-title">Azure Integration</div>
+      <div class="az-conn-info">
+        <div class="az-conn-row"><span class="az-conn-lbl">Logic App Run ID</span><span class="az-conn-val">${t.azureLogicAppRunId}</span></div>
+        <div class="az-conn-row"><span class="az-conn-lbl">Runbook Job ID</span><span class="az-conn-val">${t.azureRunbookJobId}</span></div>
+        <div class="az-conn-row"><span class="az-conn-lbl">Approved By</span><span class="az-conn-val">${t.approvedBy || '-'}</span></div>
+      </div>
+    ` : ''}
+
+    <div class="modal-section-title">Work Notes &amp; Activity</div>
+    <div class="worknotes">
+      ${(t.workNotes || []).map(n => `
+        <div class="wn-item">
+          <div class="wn-avatar">${n.author.charAt(0)}</div>
+          <div class="wn-content">
+            <div class="wn-header">
+              <span class="wn-author">${n.author}</span>
+              <span class="wn-time">${fmtTime(n.timestamp)}</span>
+              <span class="wn-type-badge ${n.type === 'azure' ? 'wn-type-az' : 'wn-type-system'}">${n.type}</span>
+            </div>
+            <div class="wn-text">${n.text}</div>
+          </div>
+        </div>
+      `).join('') || '<div class="sn-empty">No work notes yet.</div>'}
+    </div>
   `;
+
+  const footer = document.getElementById('modal-footer');
+  footer.innerHTML = '';
+  if (t.approvalState === 'requested') {
+    const btn = document.createElement('button');
+    btn.className = 'sn-btn-primary';
+    btn.textContent = 'Approve & Trigger Azure';
+    btn.onclick = () => { approveTicket(t.number); closeModal(); };
+    footer.appendChild(btn);
+  }
+  const closebtn = document.createElement('button');
+  closebtn.className = 'sn-btn-secondary';
+  closebtn.textContent = 'Close';
+  closebtn.onclick = closeModal;
+  footer.appendChild(closebtn);
+
+  document.getElementById('ticket-modal').classList.remove('hidden');
 }
 
-function renderTeams(user) {
-  const t = user.teamsConfig ?? {};
-  const grid = document.getElementById("teams-grid");
-  grid.innerHTML = `
-    ${infoCard("Enterprise Voice",  t.enterpriseVoiceEnabled ? "Enabled" : "Disabled",  t.enterpriseVoiceEnabled ? "ok" : "error")}
-    ${infoCard("Phone Number",       t.phoneNumber ?? "None — Released to pool",          t.phoneNumber ? "ok" : "muted")}
-    ${infoCard("Voice Routing Policy", t.voiceRoutingPolicy ?? "None",                   t.voiceRoutingPolicy ? "ok" : "muted")}
-    ${infoCard("Calling Policy",     t.callingPolicy ?? "None",                           t.callingPolicy ? "ok" : "muted")}
-    ${infoCard("Dial Plan",          t.dialPlan ?? "None",                                t.dialPlan ? "ok" : "muted")}
-    ${infoCard("Call Forwarding",    t.callForwardingTarget ?? "Not set",                 t.callForwardingTarget ? "warn" : "muted")}
-    ${infoCard("M365 Licenses",      (user.licenseCount ?? 0) + " assigned",             user.licenseCount > 0 ? "ok" : "error")}
-    ${infoCard("Teams Calling License", user.licenseCount > 0 ? "Assigned" : "Removed",  user.licenseCount > 0 ? "ok" : "error")}
-  `;
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('ticket-modal')) return;
+  document.getElementById('ticket-modal').classList.add('hidden');
 }
 
-function renderHardware(user) {
-  const container = document.getElementById("hardware-table");
-  // Fetch full user for hardware details
-  fetch(`/api/users/${user.id}`)
-    .then((r) => r.json())
-    .then((full) => {
-      if (!full.hardware?.length) {
-        container.innerHTML = "<div class='loading'>No hardware assigned.</div>";
-        return;
-      }
-      container.innerHTML = `<table>
-        <thead><tr><th>Type</th><th>Make / Model</th><th>Serial Number</th><th>Asset Tag</th><th>Location</th><th>Status</th><th>Return Ticket</th></tr></thead>
-        <tbody>${full.hardware.map((h) => `
-          <tr>
-            <td>${h.type}</td>
-            <td>${h.make} ${h.model}</td>
-            <td><code>${h.serialNumber}</code></td>
-            <td><code>${h.assetTag}</code></td>
-            <td>${h.location}</td>
-            <td><span class="tag tag-${h.status}">${h.status.replace("_", " ")}</span></td>
-            <td>${h.returnTicket ? `<code>${h.returnTicket}</code>` : "—"}</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>`;
-    });
+// ── Live action strip ─────────────────────────────────────────────────────────
+function addAction(msg) {
+  actionQueue.unshift(msg);
+  if (actionQueue.length > 5) actionQueue.pop();
+  const feed = document.getElementById('action-feed');
+  if (!feed) return;
+  feed.innerHTML = actionQueue.map((m, i) =>
+    `<span class="action-item ${i === 0 ? 'new-item' : ''}">${m}</span>`
+  ).join('');
 }
 
-function renderAvd(user) {
-  const container = document.getElementById("avd-table");
-  fetch(`/api/users/${user.id}`)
-    .then((r) => r.json())
-    .then((full) => {
-      if (!full.avdAssignments?.length) {
-        container.innerHTML = "<div class='loading'>No AVD assignments.</div>";
-        return;
-      }
-      container.innerHTML = `<table>
-        <thead><tr><th>Host Pool</th><th>Application Group</th><th>Workspace</th><th>Active Sessions</th><th>Status</th></tr></thead>
-        <tbody>${full.avdAssignments.map((a) => `
-          <tr>
-            <td>${a.hostPoolName}</td>
-            <td>${a.applicationGroupName}</td>
-            <td>${a.workspace}</td>
-            <td>${a.activeSessions}</td>
-            <td><span class="tag tag-${a.sessionStatus}">${a.sessionStatus}</span></td>
-          </tr>`).join("")}
-        </tbody>
-      </table>`;
-    });
+// ── Demo Reset ────────────────────────────────────────────────────────────────
+function resetDemo() {
+  if (!confirm('Reset all demo state? This will restore all users to active and clear all tickets.')) return;
+  fetch(API + '/reset', { method: 'POST' })
+    .then(() => { snowTickets = []; loadUsers(); loadSnowTickets(); addAction('Demo state reset'); })
+    .catch(() => alert('Reset failed.'));
 }
 
-function renderAuditTab(userId) {
-  const container = document.getElementById("audit-table");
-  fetch(`/api/audit-log?userId=${userId}&limit=50`)
-    .then((r) => r.json())
-    .then(({ entries }) => {
-      if (!entries.length) {
-        container.innerHTML = "<div class='loading'>No audit entries yet.</div>";
-        return;
-      }
-      container.innerHTML = `<table>
-        <thead><tr><th>Time</th><th>Action</th><th>Category</th><th>Detail</th><th>Status</th><th>Latency</th></tr></thead>
-        <tbody>${[...entries].reverse().map((e) => `
-          <tr>
-            <td style="white-space:nowrap">${new Date(e.timestamp).toLocaleTimeString("en-AU")}</td>
-            <td><strong>${e.action}</strong></td>
-            <td>${e.category}</td>
-            <td style="max-width:320px;word-break:break-word;font-size:12px">${e.detail}</td>
-            <td><span class="tag tag-${e.status}">${e.status}</span></td>
-            <td>${e.durationMs}ms</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>`;
-    });
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+function fmtTime(ts) { if (!ts) return '-'; return new Date(ts).toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+function fmtDate(ts) { if (!ts) return '-'; return new Date(ts).toLocaleDateString('en-AU', { day:'2-digit', month:'short' }); }
+function snStateCss(s) {
+  const m = { 'New':'sn-new', 'Open':'sn-open', 'In Progress':'sn-inprog', 'Closed - Complete':'sn-resolved', 'Resolved':'sn-resolved', 'Cancelled':'sn-cancelled' };
+  return m[s] || 'sn-open';
 }
-
-function infoCard(label, value, cls) {
-  return `<div class="info-card">
-    <div class="info-card-label">${label}</div>
-    <div class="info-card-value ${cls}">${value}</div>
-  </div>`;
+function snaStateCss(s) {
+  const m = { 'requested':'sna-requested', 'approved':'sna-approved', 'rejected':'sna-rejected', 'not_required':'sna-approved' };
+  return m[s] || 'sna-requested';
 }
-
-// ---- Tab switching ----
-document.querySelectorAll(".tab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".tab-content").forEach((c) => c.classList.add("hidden"));
-    btn.classList.add("active");
-    const tabId = btn.dataset.tab;
-    activeTab = tabId;
-    document.getElementById(`tab-${tabId}`).classList.remove("hidden");
-    const user = allUsers.find((u) => u.id === selectedUserId);
-    if (user) renderUserDetail(user);
-  });
-});
-
-// ---- Filter buttons ----
-document.querySelectorAll(".filter-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentFilter = btn.dataset.filter;
-    renderUserList();
-  });
-});
-
-// ---- Search ----
-document.getElementById("search").addEventListener("input", (e) => {
-  searchQuery = e.target.value.toLowerCase();
-  renderUserList();
-});
-
-// ---- Reset ----
-async function resetDemo() {
-  if (!confirm("Reset all users to Active state? This will clear the audit log and all offboarding progress.")) return;
-  await fetch("/api/reset", { method: "POST" });
-  selectedUserId = null;
-  document.getElementById("welcome-panel").classList.remove("hidden");
-  document.getElementById("user-panel").classList.add("hidden");
-  lastAuditCount = 0;
-  await fetchAll();
-}
-
-// ---- Init ----
-fetchAll();
-setInterval(fetchAll, POLL_INTERVAL);

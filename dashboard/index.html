@@ -3,157 +3,372 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Enterprise Offboarding Automation — Hackathon Demo</title>
+  <title>OffboardIQ — Enterprise Automation Demo</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app">
-    <!-- ── Sidebar ──────────────────────────────────── -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="logo">
-          <span class="logo-icon">⚡</span>
-          <div>
-            <div class="logo-title">OffboardIQ</div>
-            <div class="logo-sub">MCP Mock Server</div>
-          </div>
-        </div>
+
+<!-- TOP NAV -->
+<nav class="topnav" id="topnav">
+  <div class="nav-azure" id="nav-azure">
+    <div class="nav-logo">
+      <div class="az-logo-badge">Az</div>
+      <span class="nav-product">Microsoft Azure</span>
+    </div>
+    <div class="nav-items">
+      <span class="nav-item active">Home</span>
+      <span class="nav-item">Automation</span>
+      <span class="nav-item">Logic Apps</span>
+      <span class="nav-item">Entra ID</span>
+    </div>
+    <div class="nav-right">
+      <div class="toggle-wrap">
+        <span class="toggle-lbl snow-lbl">ServiceNow</span>
+        <label class="toggle-pill">
+          <input type="checkbox" id="view-toggle" checked />
+          <span class="pill-track"></span>
+        </label>
+        <span class="toggle-lbl azure-lbl active-lbl">Azure</span>
       </div>
-
-      <div class="summary-cards">
-        <div class="summary-card" id="card-active">
-          <div class="card-value" id="stat-active">—</div>
-          <div class="card-label">Active</div>
-        </div>
-        <div class="summary-card warning" id="card-offboarding">
-          <div class="card-value" id="stat-offboarding">—</div>
-          <div class="card-label">Processing</div>
-        </div>
-        <div class="summary-card success" id="card-offboarded">
-          <div class="card-value" id="stat-offboarded">—</div>
-          <div class="card-label">Offboarded</div>
-        </div>
-      </div>
-
-      <div class="sidebar-search">
-        <input id="search" type="text" placeholder="🔍 Search users…" />
-      </div>
-
-      <div class="sidebar-filter">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="active">Active</button>
-        <button class="filter-btn" data-filter="offboarding">Processing</button>
-        <button class="filter-btn" data-filter="offboarded">Done</button>
-      </div>
-
-      <div class="user-list" id="user-list">
-        <div class="loading">Loading users…</div>
-      </div>
-
-      <div class="sidebar-footer">
-        <button class="btn-reset" id="btn-reset" onclick="resetDemo()">🔄 Reset Demo</button>
-        <div class="connection-status" id="connection-status">
-          <span class="dot green"></span> Live
-        </div>
-      </div>
-    </aside>
-
-    <!-- ── Main Panel ───────────────────────────────── -->
-    <main class="main">
-      <!-- Header bar -->
-      <header class="topbar">
-        <div class="topbar-left">
-          <h1 id="page-title">Enterprise Offboarding Automation</h1>
-          <span class="topbar-sub">M365 + Azure Mock Environment · Hackathon Demo</span>
-        </div>
-        <div class="topbar-right">
-          <div class="badge-mcp">MCP Server</div>
-          <div class="badge-azure">Azure Logic App Simulation</div>
-        </div>
-      </header>
-
-      <!-- Welcome / no selection state -->
-      <div id="welcome-panel" class="welcome-panel">
-        <div class="welcome-icon">🏢</div>
-        <h2>Select a user to view their offboarding status</h2>
-        <p>This dashboard shows the real-time state of the mock M365 tenant as the AI-driven MCP server processes offboarding requests.</p>
-        <div class="welcome-tools">
-          <div class="tool-pill">🔐 Identity & Access</div>
-          <div class="tool-pill">📞 Teams Calling</div>
-          <div class="tool-pill">🎫 Licensing</div>
-          <div class="tool-pill">📧 Mailbox</div>
-          <div class="tool-pill">🖥️ Azure Virtual Desktop</div>
-          <div class="tool-pill">💻 Hardware Discovery</div>
-          <div class="tool-pill">🖨️ Printer Access</div>
-        </div>
-        <p class="welcome-hint">💡 Ask your AI: <em>"Offboard Adele Vance"</em> — then watch this dashboard update in real time.</p>
-      </div>
-
-      <!-- User detail panel -->
-      <div id="user-panel" class="user-panel hidden">
-        <!-- User hero -->
-        <div class="user-hero">
-          <div class="user-avatar" id="detail-avatar"></div>
-          <div class="user-hero-info">
-            <h2 id="detail-name"></h2>
-            <div id="detail-title-dept"></div>
-            <div id="detail-contact"></div>
-          </div>
-          <div class="user-hero-status">
-            <div class="status-badge" id="detail-status-badge"></div>
-            <div id="detail-account-state"></div>
-          </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="tabs">
-          <button class="tab active" data-tab="checklist">📋 Checklist</button>
-          <button class="tab" data-tab="identity">🔐 Identity</button>
-          <button class="tab" data-tab="teams">📞 Teams</button>
-          <button class="tab" data-tab="hardware">💻 Hardware</button>
-          <button class="tab" data-tab="avd">🖥️ AVD</button>
-          <button class="tab" data-tab="audit">📜 Audit Log</button>
-        </div>
-
-        <!-- Checklist Tab -->
-        <div id="tab-checklist" class="tab-content active">
-          <div class="checklist-grid" id="checklist-grid"></div>
-        </div>
-
-        <!-- Identity Tab -->
-        <div id="tab-identity" class="tab-content hidden">
-          <div class="info-grid" id="identity-grid"></div>
-        </div>
-
-        <!-- Teams Tab -->
-        <div id="tab-teams" class="tab-content hidden">
-          <div class="info-grid" id="teams-grid"></div>
-        </div>
-
-        <!-- Hardware Tab -->
-        <div id="tab-hardware" class="tab-content hidden">
-          <div id="hardware-table"></div>
-        </div>
-
-        <!-- AVD Tab -->
-        <div id="tab-avd" class="tab-content hidden">
-          <div id="avd-table"></div>
-        </div>
-
-        <!-- Audit Log Tab -->
-        <div id="tab-audit" class="tab-content hidden">
-          <div id="audit-table"></div>
-        </div>
-      </div>
-    </main>
-
-    <!-- ── Audit Feed (bottom strip) ────────────────── -->
-    <div class="audit-strip" id="audit-strip">
-      <div class="audit-strip-header">⚡ Live Action Log</div>
-      <div class="audit-strip-entries" id="audit-feed"></div>
+      <div class="nav-user"><div class="nav-avatar az-avatar">IT</div><span>IT Admin</span></div>
     </div>
   </div>
+  <div class="nav-snow hidden" id="nav-snow">
+    <div class="nav-logo">
+      <div class="sn-logo-badge">SN</div>
+      <span class="nav-product sn-product">ServiceNow</span>
+    </div>
+    <div class="nav-items sn-nav-items">
+      <span class="nav-item active">Service Catalog</span>
+      <span class="nav-item">My Requests</span>
+      <span class="nav-item">Approvals</span>
+      <span class="nav-item">IT Workflows</span>
+    </div>
+    <div class="nav-right">
+      <div class="toggle-wrap">
+        <span class="toggle-lbl snow-lbl active-lbl">ServiceNow</span>
+        <label class="toggle-pill">
+          <input type="checkbox" id="view-toggle-snow" />
+          <span class="pill-track sn-track"></span>
+        </label>
+        <span class="toggle-lbl azure-lbl">Azure</span>
+      </div>
+      <div class="nav-user"><div class="nav-avatar sn-avatar">IT</div><span>IT Admin</span></div>
+    </div>
+  </div>
+</nav>
 
-  <script src="app.js"></script>
+<!-- AZURE VIEW -->
+<div id="view-azure" class="view">
+  <div class="az-layout">
+    <aside class="az-sidebar">
+      <div class="az-sidebar-title">Automation Account</div>
+      <div class="az-sidebar-sub">offboarding-automation</div>
+      <div class="az-nav">
+        <div class="az-nav-section">Overview</div>
+        <div class="az-nav-item active" onclick="azTab('runbooks')">&#128203; Runbooks</div>
+        <div class="az-nav-item" onclick="azTab('logicapps')">&#9889; Logic Apps</div>
+        <div class="az-nav-item" onclick="azTab('users')">&#128101; Entra ID Users</div>
+        <div class="az-nav-item" onclick="azTab('jobs')">&#9881; Jobs</div>
+        <div class="az-nav-section">Monitor</div>
+        <div class="az-nav-item" onclick="azTab('audit')">&#128221; Audit Log</div>
+      </div>
+      <div class="az-tenant-summary">
+        <div class="az-tenant-label">Tenant Status</div>
+        <div class="az-stat-row"><span>Active Users</span><span id="az-stat-active" class="az-stat-val">-</span></div>
+        <div class="az-stat-row"><span>Processing</span><span id="az-stat-processing" class="az-stat-val az-warn">-</span></div>
+        <div class="az-stat-row"><span>Completed</span><span id="az-stat-done" class="az-stat-val az-ok">-</span></div>
+        <div class="az-stat-row"><span>Audit Events</span><span id="az-stat-audit" class="az-stat-val">-</span></div>
+        <button class="az-reset-btn" onclick="resetDemo()">Reset Demo State</button>
+      </div>
+    </aside>
+    <main class="az-main">
+      <div class="az-breadcrumb">
+        <span>Home</span><span class="az-bc-sep"> &gt; </span>
+        <span>Automation Accounts</span><span class="az-bc-sep"> &gt; </span>
+        <span>offboarding-automation</span><span class="az-bc-sep"> &gt; </span>
+        <span class="az-bc-active" id="az-bc-current">Runbooks</span>
+      </div>
+
+      <!-- RUNBOOKS TAB -->
+      <div id="aztab-runbooks" class="az-tab">
+        <div class="az-page-header">
+          <h1 class="az-page-title">Runbooks</h1>
+          <div class="az-conn-badge" id="az-connection"><span class="dot-live"></span> Connected to MCP Server</div>
+        </div>
+        <div class="az-runbook-grid">
+          <div class="az-rb-card" onclick="azTab('users')">
+            <div class="az-rb-icon">&#128274;</div>
+            <div class="az-rb-name">Invoke-IdentityOffboard</div>
+            <div class="az-rb-desc">Disables Entra ID account, revokes sessions, removes groups and role assignments</div>
+            <div class="az-rb-tags"><span class="az-tag">PowerShell</span><span class="az-tag">Microsoft.Graph</span></div>
+          </div>
+          <div class="az-rb-card">
+            <div class="az-rb-icon">&#128222;</div>
+            <div class="az-rb-name">Invoke-TeamsPhoneOffboard</div>
+            <div class="az-rb-desc">Disables Enterprise Voice, releases DDI, configures call forwarding and voicemail</div>
+            <div class="az-rb-tags"><span class="az-tag">PowerShell</span><span class="az-tag">MicrosoftTeams</span></div>
+          </div>
+          <div class="az-rb-card">
+            <div class="az-rb-icon">&#127915;</div>
+            <div class="az-rb-name">Invoke-LicenseReclaim</div>
+            <div class="az-rb-desc">Removes all M365 licenses (E5, Teams Phone, Audio Conferencing) and returns them to pool</div>
+            <div class="az-rb-tags"><span class="az-tag">PowerShell</span><span class="az-tag">Microsoft.Graph</span></div>
+          </div>
+          <div class="az-rb-card">
+            <div class="az-rb-icon">&#128231;</div>
+            <div class="az-rb-name">Invoke-MailboxOffboard</div>
+            <div class="az-rb-desc">Sets OOO reply, grants delegate access, converts to Shared Mailbox via Exchange Online</div>
+            <div class="az-rb-tags"><span class="az-tag">PowerShell</span><span class="az-tag">ExchangeOnlineManagement</span></div>
+          </div>
+          <div class="az-rb-card">
+            <div class="az-rb-icon">&#128187;</div>
+            <div class="az-rb-name">Invoke-AVDOffboard</div>
+            <div class="az-rb-desc">Disconnects active sessions and removes AVD host pool application group assignments</div>
+            <div class="az-rb-tags"><span class="az-tag">PowerShell</span><span class="az-tag">Az.DesktopVirtualization</span></div>
+          </div>
+          <div class="az-rb-card">
+            <div class="az-rb-icon">&#128105;</div>
+            <div class="az-rb-name">Invoke-HardwareDiscovery</div>
+            <div class="az-rb-desc">Queries ServiceNow CMDB for assigned assets and generates return shipment label</div>
+            <div class="az-rb-tags"><span class="az-tag">PowerShell</span><span class="az-tag">ServiceNow REST API</span></div>
+          </div>
+          <div class="az-rb-card az-rb-card-primary">
+            <div class="az-rb-icon">&#9889;</div>
+            <div class="az-rb-name">Invoke-FullOffboardOrchestrator</div>
+            <div class="az-rb-desc">Master runbook triggered by Logic App webhook on ServiceNow approval. Calls all child runbooks in sequence.</div>
+            <div class="az-rb-tags"><span class="az-tag az-tag-primary">Master Runbook</span><span class="az-tag">Webhook Trigger</span></div>
+          </div>
+        </div>
+        <div class="az-section-title">Active &amp; Recent Jobs</div>
+        <div id="az-jobs-panel"><div class="az-empty">No jobs running. Trigger from ServiceNow or ask the AI to run an offboarding.</div></div>
+      </div>
+
+      <!-- LOGIC APPS TAB -->
+      <div id="aztab-logicapps" class="az-tab hidden">
+        <div class="az-page-header"><h1 class="az-page-title">Logic Apps</h1></div>
+        <div class="az-la-card">
+          <div class="az-la-header">
+            <div class="az-la-icon">&#9889;</div>
+            <div>
+              <div class="az-la-name">offboarding-orchestrator</div>
+              <div class="az-la-sub">australiasoutheast &middot; Standard &middot; Enabled</div>
+            </div>
+            <div class="az-la-status">&#9679; Enabled</div>
+          </div>
+          <div class="az-la-flow">
+            <div class="az-flow-step az-step-trigger"><div class="az-fs-icon">&#128276;</div><div class="az-fs-label">HTTP Webhook</div><div class="az-fs-sub">POST from ServiceNow</div></div>
+            <div class="az-flow-arr">&#8659;</div>
+            <div class="az-flow-step"><div class="az-fs-icon">&#10003;</div><div class="az-fs-label">Parse JSON</div><div class="az-fs-sub">Extract employeeId, ticket, reason</div></div>
+            <div class="az-flow-arr">&#8659;</div>
+            <div class="az-flow-step"><div class="az-fs-icon">&#9881;</div><div class="az-fs-label">Create Automation Job</div><div class="az-fs-sub">Start Invoke-FullOffboardOrchestrator</div></div>
+            <div class="az-flow-arr">&#8659;</div>
+            <div class="az-flow-step"><div class="az-fs-icon">&#128260;</div><div class="az-fs-label">Until - Job Complete</div><div class="az-fs-sub">Poll job status every 30s</div></div>
+            <div class="az-flow-arr">&#8659;</div>
+            <div class="az-flow-step"><div class="az-fs-icon">&#128221;</div><div class="az-fs-label">Update ServiceNow</div><div class="az-fs-sub">PUT /api/now/table/sc_request</div></div>
+          </div>
+          <div class="az-section-title" style="margin-top:1.5rem">Recent Runs</div>
+          <div id="az-la-runs"><div class="az-empty">No runs yet. Approve a ServiceNow ticket to trigger this Logic App.</div></div>
+        </div>
+      </div>
+
+      <!-- ENTRA ID USERS TAB -->
+      <div id="aztab-users" class="az-tab hidden">
+        <div class="az-page-header">
+          <h1 class="az-page-title">Microsoft Entra ID &mdash; Users</h1>
+          <input class="az-search" id="az-user-search" type="text" placeholder="Search by name or department..." oninput="filterAzUsers()" />
+        </div>
+        <div class="az-user-filters">
+          <button class="az-filter active" data-filter="all" onclick="setAzFilter(this,'all')">All users</button>
+          <button class="az-filter" data-filter="active" onclick="setAzFilter(this,'active')">Active</button>
+          <button class="az-filter" data-filter="offboarding" onclick="setAzFilter(this,'offboarding')">Processing</button>
+          <button class="az-filter" data-filter="offboarded" onclick="setAzFilter(this,'offboarded')">Offboarded</button>
+        </div>
+        <div id="az-users-table"></div>
+        <div id="az-user-drawer" class="az-drawer hidden">
+          <div class="az-drawer-header">
+            <div class="az-dr-avatar" id="az-dr-avatar"></div>
+            <div><div class="az-dr-name" id="az-dr-name"></div><div class="az-dr-sub" id="az-dr-sub"></div></div>
+            <button class="az-dr-close" onclick="closeDrawer()">&#10005;</button>
+          </div>
+          <div class="az-dr-tabs">
+            <button class="az-dr-tab active" onclick="drTab('overview',this)">Overview</button>
+            <button class="az-dr-tab" onclick="drTab('teams',this)">Teams &amp; Calling</button>
+            <button class="az-dr-tab" onclick="drTab('hardware',this)">Hardware</button>
+            <button class="az-dr-tab" onclick="drTab('avd',this)">AVD</button>
+            <button class="az-dr-tab" onclick="drTab('auditdr',this)">Audit</button>
+          </div>
+          <div id="az-dr-content"></div>
+        </div>
+      </div>
+
+      <!-- JOBS TAB -->
+      <div id="aztab-jobs" class="az-tab hidden">
+        <div class="az-page-header"><h1 class="az-page-title">Automation Jobs</h1></div>
+        <div id="az-jobs-full"><div class="az-empty">No jobs yet.</div></div>
+      </div>
+
+      <!-- AUDIT TAB -->
+      <div id="aztab-audit" class="az-tab hidden">
+        <div class="az-page-header"><h1 class="az-page-title">Audit Log</h1></div>
+        <div id="az-audit-full" class="az-audit-wrap"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- SERVICENOW VIEW -->
+<div id="view-snow" class="view hidden">
+  <div class="sn-layout">
+    <aside class="sn-sidebar">
+      <div class="sn-sidebar-section">FAVORITES</div>
+      <div class="sn-nav-item active" onclick="snTab('catalog')"><span class="sn-nav-icon">&#128722;</span>Service Catalog</div>
+      <div class="sn-nav-item" onclick="snTab('requests')"><span class="sn-nav-icon">&#128203;</span>My Requests<span class="sn-badge" id="sn-badge-open">0</span></div>
+      <div class="sn-nav-item" onclick="snTab('approvals')"><span class="sn-nav-icon">&#10003;</span>My Approvals<span class="sn-badge sn-badge-warn" id="sn-badge-approvals">0</span></div>
+      <div class="sn-sidebar-section">AUTOMATION</div>
+      <div class="sn-nav-item" onclick="snTab('outbound')"><span class="sn-nav-icon">&#128279;</span>Outbound REST</div>
+      <div class="sn-nav-item" onclick="snTab('workflows')"><span class="sn-nav-icon">&#9889;</span>Workflows</div>
+      <div class="sn-sidebar-section">REPORTING</div>
+      <div class="sn-nav-item" onclick="snTab('reports')"><span class="sn-nav-icon">&#128202;</span>Reports</div>
+    </aside>
+    <main class="sn-main">
+
+      <!-- SERVICE CATALOG TAB -->
+      <div id="sntab-catalog" class="sn-tab">
+        <div class="sn-page-header"><h1 class="sn-page-title">Service Catalog</h1></div>
+        <div class="sn-catalog-card">
+          <div class="sn-cat-header">
+            <div class="sn-cat-icon">&#128100;</div>
+            <div>
+              <div class="sn-cat-name">Employee Offboarding Request</div>
+              <div class="sn-cat-sub">IT &middot; Human Resources &middot; Offboarding</div>
+            </div>
+          </div>
+          <p class="sn-cat-desc">Raise this request to initiate automated employee offboarding. Upon manager approval, an Outbound REST Message fires to the Azure Logic App webhook which orchestrates all IT tasks via Azure Automation Runbooks.</p>
+          <form class="sn-form" id="sn-form" onsubmit="submitSnowForm(event)">
+            <div class="sn-form-section">Request Details</div>
+            <div class="sn-form-row">
+              <label class="sn-label">Employee <span class="sn-req">*</span></label>
+              <select class="sn-select" id="sn-emp-select" required><option value="">-- Select employee --</option></select>
+            </div>
+            <div class="sn-form-row">
+              <label class="sn-label">Requested For <span class="sn-req">*</span></label>
+              <input class="sn-input" id="sn-requestedby" type="text" value="Patti Fernandez" required />
+            </div>
+            <div class="sn-form-row">
+              <label class="sn-label">Offboarding Reason <span class="sn-req">*</span></label>
+              <select class="sn-select" id="sn-reason-select" required>
+                <option value="Resignation">Resignation</option>
+                <option value="Termination">Termination</option>
+                <option value="Retirement">Retirement</option>
+                <option value="Contract End">Contract End</option>
+              </select>
+            </div>
+            <div class="sn-form-row">
+              <label class="sn-label">Additional Notes</label>
+              <textarea class="sn-textarea" id="sn-notes" rows="3" placeholder="Any additional context for the IT team..."></textarea>
+            </div>
+            <div class="sn-form-actions">
+              <button type="submit" class="sn-btn-primary">Submit Request</button>
+              <button type="button" class="sn-btn-secondary" onclick="snTab('requests')">View My Requests</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- REQUESTS TAB -->
+      <div id="sntab-requests" class="sn-tab hidden">
+        <div class="sn-page-header">
+          <h1 class="sn-page-title">My Requests</h1>
+          <button class="sn-btn-secondary" onclick="snTab('catalog')">+ New Request</button>
+        </div>
+        <div id="sn-tickets-table"><div class="sn-empty">No requests yet. Submit an offboarding request from Service Catalog.</div></div>
+      </div>
+
+      <!-- APPROVALS TAB -->
+      <div id="sntab-approvals" class="sn-tab hidden">
+        <div class="sn-page-header"><h1 class="sn-page-title">My Approvals</h1></div>
+        <div id="sn-approvals-table"><div class="sn-empty">No pending approvals.</div></div>
+      </div>
+
+      <!-- OUTBOUND REST TAB -->
+      <div id="sntab-outbound" class="sn-tab hidden">
+        <div class="sn-page-header"><h1 class="sn-page-title">Outbound REST Messages</h1></div>
+        <div class="sn-outbound-card">
+          <div class="sn-ob-title">REST Message: trigger_azure_offboarding</div>
+          <div class="sn-ob-grid">
+            <div class="sn-ob-row"><span class="sn-ob-label">Endpoint</span><code class="sn-code">https://prod-xx.australiasoutheast.logic.azure.com/workflows/offboarding-orchestrator/triggers/manual/run</code></div>
+            <div class="sn-ob-row"><span class="sn-ob-label">Method</span><code class="sn-code">POST</code></div>
+            <div class="sn-ob-row"><span class="sn-ob-label">Authentication</span><code class="sn-code">Managed Credential (SAS Token)</code></div>
+            <div class="sn-ob-row"><span class="sn-ob-label">Triggered By</span><code class="sn-code">Workflow: Offboarding Approval on sc_request</code></div>
+          </div>
+          <div class="sn-ob-payload-label">Payload Schema</div>
+          <pre class="sn-code-block">{
+  "employeeId": "{{requestItem.variables.employee_id}}",
+  "employeeEmail": "{{requestItem.variables.employee_email}}",
+  "ticketNumber": "{{request.number}}",
+  "reason": "{{requestItem.variables.offboarding_reason}}",
+  "requestedBy": "{{request.requested_for.name}}",
+  "approvedBy": "{{approval.approver.name}}"
+}</pre>
+          <div class="sn-section-title">Recent Calls</div>
+          <div id="sn-outbound-log"><div class="sn-empty">No outbound calls yet. Approve a ticket to trigger.</div></div>
+        </div>
+      </div>
+
+      <!-- WORKFLOWS TAB -->
+      <div id="sntab-workflows" class="sn-tab hidden">
+        <div class="sn-page-header"><h1 class="sn-page-title">Workflows</h1></div>
+        <div class="sn-wf-card">
+          <div class="sn-wf-title">Offboarding Approval &amp; Azure Trigger</div>
+          <div class="sn-wf-flow">
+            <div class="sn-wf-step">&#128229;<br>RITM Created</div>
+            <div class="sn-wf-arr">&#8594;</div>
+            <div class="sn-wf-step">&#128232;<br>Notify Manager</div>
+            <div class="sn-wf-arr">&#8594;</div>
+            <div class="sn-wf-step">&#8987;<br>Await Approval</div>
+            <div class="sn-wf-arr">&#8594;</div>
+            <div class="sn-wf-step sn-wf-highlight">&#128279;<br>Outbound REST<br>to Azure</div>
+            <div class="sn-wf-arr">&#8594;</div>
+            <div class="sn-wf-step">&#10003;<br>Resolve Ticket</div>
+          </div>
+          <p class="sn-wf-note">When the manager approves the RITM, ServiceNow fires an Outbound REST Message to the Azure Logic App webhook. The Logic App starts the Azure Automation Runbook which calls Microsoft.Graph and MicrosoftTeams PowerShell modules. Upon completion, the Logic App calls back to the ServiceNow REST API to resolve the ticket.</p>
+        </div>
+      </div>
+
+      <!-- REPORTS TAB -->
+      <div id="sntab-reports" class="sn-tab hidden">
+        <div class="sn-page-header"><h1 class="sn-page-title">Offboarding Reports</h1></div>
+        <div class="sn-report-grid">
+          <div class="sn-report-card"><div class="sn-rc-val" id="rpt-total">0</div><div class="sn-rc-label">Total Tickets</div></div>
+          <div class="sn-report-card sn-rc-ok"><div class="sn-rc-val" id="rpt-resolved">0</div><div class="sn-rc-label">Resolved</div></div>
+          <div class="sn-report-card sn-rc-warn"><div class="sn-rc-val" id="rpt-pending">0</div><div class="sn-rc-label">In Progress</div></div>
+          <div class="sn-report-card"><div class="sn-rc-val" id="rpt-azure">0</div><div class="sn-rc-label">Azure Triggered</div></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- TICKET DETAIL MODAL -->
+<div id="ticket-modal" class="modal-overlay hidden" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div><div class="modal-ticket-num" id="modal-num"></div><div class="modal-ticket-desc" id="modal-desc"></div></div>
+      <button class="modal-close" onclick="closeModal()">&#10005;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- LIVE ACTION STRIP -->
+<div class="action-strip" id="action-strip">
+  <div class="action-strip-label">&#9889; Live</div>
+  <div class="action-feed" id="action-feed"></div>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+[main 7077006] Add PUSH-TO-GITHUB helper batch file
+ 6 files changed, 51 insertions(+)
+ create mode 100644 PUSH-TO-GITHUB.bat
+ create mode 100644 addresult.txt
+ create mode 100644 ghcheck.txt
+ delete mode 100644 gitout.txt
+ create mode 100644 logcheck.txt
+ create mode 100644 remotecheck.txt

@@ -18,6 +18,7 @@ import { registerAvdTools } from "./tools/avd.js";
 import { registerHardwareTools } from "./tools/hardware.js";
 import { registerPrinterTools } from "./tools/printer.js";
 import { registerOrchestrationTools } from "./tools/orchestration.js";
+import { registerServiceNowTools, getAllSnowTickets, getSnowTicket, resetSnowTickets, createSnowTicket, approveTicket } from "./tools/servicenow.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,6 +38,7 @@ registerAvdTools(server);
 registerHardwareTools(server);
 registerPrinterTools(server);
 registerOrchestrationTools(server);
+registerServiceNowTools(server);
 
 // ---- 2. HTTP Dashboard Server ----
 const app = express();
@@ -88,8 +90,56 @@ app.get("/api/offboarding-tasks", (_req, res) => {
   res.json(store.getAllOffboardingTasks());
 });
 
+// Helper — adds dashboard-friendly fields to a ticket object
+function normalizeTicket(t: ReturnType<typeof getSnowTicket>) {
+  if (!t) return t;
+  const primaryApproval = t.approvals[0];
+  return {
+    ...t,
+    employeeName: t.affectedUser,
+    employeeEmail: t.requestedByEmail,
+    approvalState: primaryApproval?.state ?? 'not_required',
+    approvedBy: primaryApproval?.state === 'approved' ? primaryApproval.approver : null,
+    approvedAt: primaryApproval?.respondedAt ?? null,
+    workNotes: t.workNotes.map(n => ({ ...n, text: n.note })),
+  };
+}
+
+app.get("/api/snow/tickets", (_req, res) => {
+  res.json({ tickets: getAllSnowTickets().map(t => normalizeTicket(t)) });
+});
+
+app.get("/api/snow/tickets/:number", (req, res) => {
+  const ticket = getSnowTicket(req.params.number);
+  if (!ticket) { res.status(404).json({ error: "Not Found" }); return; }
+  res.json(normalizeTicket(ticket));
+});
+
+app.post("/api/snow/tickets", (req, res) => {
+  const { employeeId, reason, requestedBy } = req.body as { employeeId?: string; reason?: string; requestedBy?: string };
+  if (!employeeId) { res.status(400).json({ error: "employeeId is required" }); return; }
+  try {
+    const ticket = createSnowTicket(employeeId, reason ?? "Resignation", requestedBy ?? "IT Admin");
+    res.json({ success: true, ticket: normalizeTicket(ticket) });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(404).json({ error: msg });
+  }
+});
+
+app.post("/api/snow/tickets/:number/approve", (req, res) => {
+  const ticket = getSnowTicket(req.params.number);
+  if (!ticket) { res.status(404).json({ error: "Not Found" }); return; }
+  // Approve using the first pending approval's approver name, or the passed-in approver
+  const firstApproval = ticket.approvals.find(a => a.state === "requested");
+  const approver = firstApproval?.approver ?? ((req.body as { approver?: string })?.approver ?? "IT Admin");
+  approveTicket(req.params.number, approver);
+  res.json({ success: true, ticket: normalizeTicket(getSnowTicket(req.params.number)) });
+});
+
 app.post("/api/reset", (_req, res) => {
   store.reset();
+  resetSnowTickets();
   res.json({ success: true, message: "State reset to initial mock data" });
 });
 

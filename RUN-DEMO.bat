@@ -65,3 +65,4 @@ echo  Done -- all 25 users restored to Active.
 :menu_end
 echo.
 pause
+goto menu

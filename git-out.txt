@@ -1,15 +1,9 @@
 git add OK
-[main 84e9756] Dual-pane ServiceNow/Azure dashboard and ticket API endpoints
- 14 files changed, 4347 insertions(+), 598 deletions(-)
- create mode 100644 build-out.txt
- create mode 100644 chk.txt
- create mode 100644 chk2.txt
- create mode 100644 commitresult.txt
- create mode 100644 git-node-out.txt
- create mode 100644 remotecheck2.txt
- create mode 100644 src/tools/servicenow.ts
- create mode 100644 tools/git-push.cjs
- create mode 100644 tools/write-dashboard.cjs
- create mode 100644 tools/write-dashboard.js
+[main 1222a4b] Fix empty employee dropdown: correct API response parsing and field names
+ 7 files changed, 65 insertions(+), 15 deletions(-)
+ create mode 100644 api-test.txt
+ create mode 100644 git-out.txt
+ create mode 100644 remote-check.txt
+ create mode 100644 tools/check-remote.cjs
 
 

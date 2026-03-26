@@ -1,1 +1,17 @@
-true,true,true
+l,
+        workNotes: t.workNotes.map(n => ({ ...n, text: n.note })),
+    };
+}
+app.get("/api/snow/tickets", (_req, res) => {
+    res.json({ tickets: getAllSnowTickets().map(t => normalizeTicket(t)) });
+});
+app.get("/api/snow/tickets/:number", (req, res) => {
+    const ticket = getSnowTicket(req.params.number);
+    if (!ticket) {
+        res.status(404).json({ error: "Not Found" });
+        return;
+    }
+    res.json(normalizeTicket(ticket));
+});
+app.post("/api/snow/tickets", (req, res) => {
+    

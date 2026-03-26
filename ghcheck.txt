@@ -1,0 +1,8 @@
+where.exe : INFO: Could not find files for the given pattern(s).
+At line:1 char:1
++ where.exe gh 2>&1 | Out-File C:\hackathon-offboarding-mcp\ghcheck.txt ...
++ ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO: Could not...ven pattern(s). 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

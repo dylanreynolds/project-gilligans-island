@@ -27,7 +27,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 function Write-Step {
-    param([string]$Icon, [string]$Text, [string]$Color = "Cyan")
+    param([string]$Icon, [string]$Text, [string]$Color = "Gray")
     Write-Host ""
     Write-Host "  $Icon  $Text" -ForegroundColor $Color
 }
@@ -48,14 +48,7 @@ function Invoke-MockApi {
 # ============================================================
 Write-Host ''
 Write-Host '  OffboardIQ | DEMO' -ForegroundColor White
-Write-Host ''
-Write-Host ' ___   __  __ _                         _ ___ ___  ' -ForegroundColor Cyan
-Write-Host ' / _ \ / _|/ _| |__   ___   __ _ _ __ __| |_ _/ _ \ ' -ForegroundColor Cyan
-Write-Host '| | | | |_| |_| ''_ \ / _ \ / _` | ''__/ _` || | | | |' -ForegroundColor Cyan
-Write-Host '| |_| |  _|  _| |_) | (_) | (_| | | | (_| || | |_| |' -ForegroundColor Cyan
-Write-Host ' \___/|_| |_| |_.__/ \___/ \__,_|_|  \__,_|___\__\_\' -ForegroundColor Cyan
-Write-Host ''
-Write-Host '  Enterprise Offboarding  //  Azure Logic App + ServiceNow Simulation' -ForegroundColor DarkCyan
+Write-Host '  Enterprise Offboarding  //  Azure Logic App + ServiceNow Simulation' -ForegroundColor Gray
 Write-Host ''
 
 # ---- Step 0: Verify server is running ----
@@ -157,38 +150,48 @@ if ($fullUser.avdAssignments) {
 # ---- Step 4: Run the full offboarding ----
 Write-Step '[>>]' 'EXECUTING FULL OFFBOARDING WORKFLOW...' 'Yellow'
 Write-Host ""
-
-# NOTE: In a real deployment this would call Azure Automation via Webhook.
-# Here we demonstrate what the Logic App runbook would report back.
-Write-Host "  [Simulated] POST https://prod-xx.australiasouth.logic.azure.com/workflows/offboarding/triggers/manual/run" -ForegroundColor DarkGray
-Write-Host "  [Simulated] Azure Runbook: Invoke-OffboardingWorkflow -EmployeeId $($user.id) -Reason '$Reason'" -ForegroundColor DarkGray
+Write-Host "  [Azure] POST https://prod-xx.australiasouth.logic.azure.com/workflows/offboarding/triggers/manual/run" -ForegroundColor DarkGray
+Write-Host "  [Azure] Runbook: Invoke-OffboardingWorkflow -EmployeeId $($user.id) -Reason '$Reason'" -ForegroundColor DarkGray
 Write-Host ""
 
-$categories = @(
-    @{ Icon='[ID]';   Name='Identity & Access';     Steps=@('Disable Entra ID account', 'Revoke all sessions', 'Remove group memberships', 'Remove role assignments', 'Reset password') },
-    @{ Icon='[TEL]';  Name='Teams & Telephony';      Steps=@('Disable Enterprise Voice', 'Remove phone number', 'Set call forwarding to manager', 'Configure offboarding voicemail') },
-    @{ Icon='[LIC]';  Name='M365 Licensing';         Steps=@('Remove Microsoft 365 E5', 'Remove Teams Phone Standard', 'Remove Audio Conferencing') },
-    @{ Icon='[MAIL]'; Name='Exchange Mailbox';        Steps=@('Configure out-of-office reply', 'Grant delegate access to manager', 'Convert to Shared Mailbox', 'Disable email send') },
-    @{ Icon='[PC]';   Name='Azure Virtual Desktop';  Steps=@('Query active sessions', 'Force disconnect sessions', 'Remove host pool assignments') },
-    @{ Icon='[HW]';   Name='Hardware Discovery';     Steps=@('Query CMDB for assigned assets', 'Generate return shipment ticket') },
-    @{ Icon='[PRT]';  Name='Printer Access';         Steps=@('Remove from Universal Print groups') }
-)
+$runBody = @{ userId = $user.id; reason = $Reason; simulateError = $SimulateError.IsPresent }
+$runResult = Invoke-MockApi '/api/offboarding/run' 'POST' $runBody
 
-foreach ($cat in $categories) {
-    $shouldError = $SimulateError -and ($cat.Name -eq 'Teams & Telephony')
-    Write-Host "  $($cat.Icon)  $($cat.Name)" -ForegroundColor Cyan
-
-    foreach ($step in $cat.Steps) {
-        Start-Sleep -Milliseconds (Get-Random -Minimum 120 -Maximum 500)
-        if ($shouldError -and $step -eq 'Disable Enterprise Voice') {
-            Write-Host "     [ERR] $step -- 429 Too Many Requests (Teams API throttled)" -ForegroundColor Red
-            Write-Host '           Retry-After: 60 seconds. Recording error in audit log.' -ForegroundColor DarkGray
-        } else {
-            Write-Host "     [OK]  $step" -ForegroundColor Green
-        }
-    }
-    Write-Host ''
+if (-not $runResult) {
+    Write-Host '  [ERR] Offboarding workflow API call failed.' -ForegroundColor Red
+    exit 1
 }
+
+# ---- Display per-category results from the real execution ----
+$iconMap = @{
+    'Identity'       = '[ID] '
+    'Teams & Calling'= '[TEL]'
+    'Licensing'      = '[LIC]'
+    'Mailbox'        = '[MAIL]'
+    'AVD'            = '[PC] '
+    'Hardware'       = '[HW] '
+    'Printer Access' = '[PRT]'
+}
+
+$currentCategory = ''
+foreach ($step in $runResult.steps) {
+    if ($step.category -ne $currentCategory) {
+        if ($currentCategory -ne '') { Write-Host '' }
+        $icon = if ($iconMap.ContainsKey($step.category)) { $iconMap[$step.category] } else { '[??]' }
+        Write-Host "  $icon  $($step.category)" -ForegroundColor White
+        $currentCategory = $step.category
+    }
+    $ms = if ($step.ms -gt 0) { " ($($step.ms)ms)" } else { '' }
+    switch ($step.status) {
+        'completed' { Write-Host "     [OK]  $($step.step)$ms" -ForegroundColor Green }
+        'error'     {
+            Write-Host "     [ERR] $($step.step)" -ForegroundColor Red
+            Write-Host "           $($step.detail)" -ForegroundColor DarkGray
+        }
+        'skipped'   { Write-Host "     [---] $($step.step) -- skipped" -ForegroundColor DarkGray }
+    }
+}
+Write-Host ''
 
 # ---- Step 5: Summary ----
 Start-Sleep -Milliseconds 800
@@ -214,5 +217,5 @@ Write-Host "  Phone Released: $phoneState" -ForegroundColor $phoneColor
 Write-Host "  Licenses:       $($finalUser.licenseCount) remaining" -ForegroundColor $licColor
 Write-Host "  Audit Entries:  $($auditData.total) actions logged" -ForegroundColor White
 Write-Host ''
-Write-Host "  View live dashboard: $BaseUrl/dashboard" -ForegroundColor Cyan
+Write-Host "  View live dashboard: $BaseUrl/dashboard" -ForegroundColor Gray
 Write-Host ''

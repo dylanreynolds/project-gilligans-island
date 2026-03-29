@@ -18,6 +18,7 @@ import { registerAvdTools } from "./tools/avd.js";
 import { registerHardwareTools } from "./tools/hardware.js";
 import { registerPrinterTools } from "./tools/printer.js";
 import { registerOrchestrationTools } from "./tools/orchestration.js";
+import { executeOffboardingWorkflow } from "./tools/orchestration.js";
 import { registerServiceNowTools, getAllSnowTickets, getSnowTicket, resetSnowTickets, createSnowTicket, approveTicket, resolveSnowTicket, addWorkNote } from "./tools/servicenow.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -151,6 +152,15 @@ app.post("/api/snow/tickets/:number/resolve", (req, res) => {
   const { completedBy, resolution, jobId } = req.body as { completedBy?: string; resolution?: string; jobId?: string };
   resolveSnowTicket(req.params.number, completedBy ?? "Azure Automation", resolution ?? "Offboarding completed.", jobId ?? "");
   res.json({ success: true, ticket: normalizeTicket(getSnowTicket(req.params.number)) });
+});
+
+// HTTP wrapper for the full offboarding workflow — used by the PS demo script
+app.post("/api/offboarding/run", async (req, res) => {
+  const { userId, reason, simulateError } = req.body as { userId?: string; reason?: string; simulateError?: boolean };
+  if (!userId) { res.status(400).json({ error: "userId is required" }); return; }
+  const result = await executeOffboardingWorkflow(userId, reason ?? "Resignation", simulateError ?? false);
+  if ("notFound" in result) { res.status(404).json({ error: `User '${userId}' not found` }); return; }
+  res.json(result);
 });
 
 app.post("/api/reset", (_req, res) => {
